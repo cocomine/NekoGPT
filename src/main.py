@@ -15,7 +15,7 @@ from BotCmd import set_command
 
 # starting bot
 def start(bot_name="ChatGPT"):
-    logging.basicConfig(level=logging.INFO)  # set logging level
+    logging.basicConfig(level=logging.DEBUG)  # set logging level
     handler = logging.FileHandler(filename='../bot.log', encoding='utf-8', mode='w')  # create log file handler
     logging.info(f"{bot_name} Discord Bot is starting...")
 
@@ -40,7 +40,7 @@ def start(bot_name="ChatGPT"):
     set_event_lister(client, mydb, chatbot, bot_name)  # set event listener
     set_command(client, mydb, chatbot, bot_name)  # set command listener
 
-    client.run(os.getenv("DISCORD_TOKEN"), log_handler=handler, log_level=logging.DEBUG)  # run bot
+    client.run(os.getenv("DISCORD_TOKEN"), log_handler=handler, log_level=logging.INFO)  # run bot
 
 
 # run bot

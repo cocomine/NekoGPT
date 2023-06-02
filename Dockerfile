@@ -11,7 +11,7 @@ ENV MYSQL_DATABASE (Your SQL database)
 ENV BOT_NAME (Your Bot Name)
 
 # Add file
-ADD ./ ./
+ADD src/ ./
 
 # set-up command
 RUN apt-get --yes update; apt-get --yes upgrade;
