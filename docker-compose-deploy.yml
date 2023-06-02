@@ -12,6 +12,8 @@ services:
       - MARIADB_DATABASE=NekoGPT
     ports:
       - 3306:3306
+    volumes:
+        - ./sql:/docker-entrypoint-initdb.d
 
   app:
     container_name: NekoGPT
@@ -25,6 +27,8 @@ services:
       - MYSQL_HOST=NekoGPT_DB
       - MYSQL_USER=NekoGPT
       - MYSQL_PASSWORD=xO6_s*xJtd
+      - SPEECH_KEY=(Your Speech key)
+      - SPEECH_REGION=(Your Speech region)
     links:
       - db
     depends_on:
