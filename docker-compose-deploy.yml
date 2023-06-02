@@ -2,6 +2,7 @@ version: 0.0.1
 
 services:
   db:
+    restart: always
     container_name: NekoGPT_DB
     image: mariadb:latest
     environment:
@@ -14,6 +15,7 @@ services:
 
   app:
     container_name: NekoGPT
+    restart: always
     image: cocomine/nekogpt:latest
     environment:
       - BOT_NAME=NekoGPT

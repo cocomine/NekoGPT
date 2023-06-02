@@ -15,6 +15,11 @@ ADD src/ ./
 
 # set-up command
 RUN apt-get --yes update; apt-get --yes upgrade;
+RUN apt --yes install libgstreamer1.0-0 \
+gstreamer1.0-plugins-base \
+gstreamer1.0-plugins-good \
+gstreamer1.0-plugins-bad \
+gstreamer1.0-plugins-ugly
 RUN pip install -r requirements.txt
 
 # start-up command

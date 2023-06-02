@@ -1,16 +1,20 @@
 import asyncio
+import io
+import os
 
 import discord
-from discord import Forbidden
+from discord import Forbidden, Color
 from discord.ext import commands
 from mysql.connector import connect
 from revChatGPT.V1 import AsyncChatbot
 
 from Prompt import Prompt
+from STT import STT
 
 
 def set_event_lister(client: commands.Bot, db: connect, chatbot: AsyncChatbot, bot_name: str):
     prompt = Prompt(chatbot)
+    stt = STT(os.environ["SPEECH_KEY"], os.environ["SPEECH_REGION"])
 
     @client.event
     async def on_ready():
@@ -22,6 +26,14 @@ def set_event_lister(client: commands.Bot, db: connect, chatbot: AsyncChatbot, b
                                                                     name=f"@{bot_name} chat with me!"))
         except Exception as e:
             print(e)
+
+        # create voice message tmp folder
+        voice_message_tmp_path = os.path.join(os.path.dirname(__file__), "voice")
+        if not os.path.exists(voice_message_tmp_path):
+            os.mkdir(voice_message_tmp_path)
+        elif not os.path.isdir(voice_message_tmp_path):
+            os.remove(voice_message_tmp_path)
+            os.mkdir(voice_message_tmp_path)
 
     # add into server
     @client.event
@@ -74,6 +86,7 @@ def set_event_lister(client: commands.Bot, db: connect, chatbot: AsyncChatbot, b
     @client.event
     async def on_message(message: discord.Message):
         print(f"Message from {message.author} ({message.author.id}): {message.content}")
+        print(f"Attachments: {message.attachments}")
         cursor = db.cursor()
         if message.author == client.user:
             return
@@ -110,8 +123,27 @@ def set_event_lister(client: commands.Bot, db: connect, chatbot: AsyncChatbot, b
                     cursor.execute("UPDATE DM SET replying = TRUE WHERE User = %s",
                                    (message.author.id,))
                     db.commit()
+                    ask = message.content
 
-                    await prompt.ask(conversation, msg, message.content)
+                    # check if message is voice message
+                    if ask == "" and message.attachments[0] is not None:
+                        attachments = message.attachments[0]
+                        if attachments.content_type == "audio/ogg" and attachments.filename == "voice-message.ogg":
+                            filename = f"voice\\{message.id}.ogg"
+                            await attachments.save(filename)  # save voice message
+
+                            # convert voice message to text
+                            ask = await stt.speech_to_text(filename)
+                            print(f"Voice message: {ask}")
+                            os.remove(filename)  # remove voice message file
+
+                            # show original text
+                            embed = discord.Embed(title=f"Detected original text", description=ask, color=Color.blue(), type="article")
+                            embed.set_author(name=f"{message.author}", icon_url=message.author.avatar.url)
+                            await msg.edit(content="<a:loading:1112646025090445354>", embed=embed)
+
+                    # ask chatbot
+                    await prompt.ask(conversation, msg, ask)
                     await message.add_reaction("✅")
 
             except Exception as e:

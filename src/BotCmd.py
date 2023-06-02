@@ -1,6 +1,7 @@
 import asyncio
 
 import discord
+from discord import Color, Embed
 from discord.ext import commands
 from mysql.connector import connect
 from revChatGPT.V1 import AsyncChatbot
@@ -137,7 +138,7 @@ def set_command(client: commands.Bot, db: connect, chatbot: AsyncChatbot, bot_na
         db.commit()
 
         await interaction.followup.send(f"🔄 {client.user} has reset all conversation in this server",
-                                                ephemeral=True)
+                                        ephemeral=True)
 
     # reset DM conversation
     @tree.command(name="reset-dm", description=f"Reset conversation in DM")
@@ -156,7 +157,7 @@ def set_command(client: commands.Bot, db: connect, chatbot: AsyncChatbot, bot_na
         # stop conversation
         if result is not None:
             if result[1] is not None:
-                await prompt.stop_conversation(result[2])
+                await prompt.stop_conversation(result[1])
 
             # reset conversation
             conversation = await prompt.start_new_conversation()
@@ -166,3 +167,15 @@ def set_command(client: commands.Bot, db: connect, chatbot: AsyncChatbot, bot_na
 
         await interaction.followup.send(f"🔄 {client.user} has reset conversation in DM")
 
+    # command help
+    @tree.command(name="help", description=f"Show {bot_name} command help")
+    @commands.guild_only()
+    @commands.bot_has_permissions(send_messages=True)
+    async def help(interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+
+        help_embed = Embed(title=f"{client.user} | Help menu", color=Color.yellow())
+        help_embed.set_image(url=client.user.avatar.url)
+        help_embed.add_field(name="</reply-this:1112069656178610266>", value="Show this help menu", inline=False)
+
+        await interaction.followup.send(ephemeral=True, embed=help_embed)
