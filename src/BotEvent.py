@@ -22,7 +22,7 @@ def set_event_lister(client: commands.Bot, db: connect, chatbot: AsyncChatbot, b
         logging.info(f'{client.user} has connected to Discord!')
         try:
             synced = await client.tree.sync()
-            logging.info(f"Synced {synced.count()} commands")
+            logging.info(f"Synced {synced.count} commands")
             await client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching,
                                                                    name=f"@{bot_name} chat with me!"))
         except Exception as e:
@@ -225,6 +225,10 @@ def set_event_lister(client: commands.Bot, db: connect, chatbot: AsyncChatbot, b
 
                     # remove loading reaction
                     await message.remove_reaction("<a:loading:1112646025090445354>", client.user)
+
+            else:
+                await message.reply("🔥 Sorry, Thi server is not enabled **@mention** feature.")
+
             return
 
         # check if message is sent in set channel
