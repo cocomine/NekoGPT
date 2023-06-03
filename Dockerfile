@@ -1,6 +1,6 @@
 FROM python:latest
 LABEL authors="cocomine"
-LABEL version="0.1.5"
+LABEL version="0.1.6"
 WORKDIR /bot
 
 ENV DISCORD_TOKEN (Your Discord token)
@@ -13,9 +13,6 @@ ENV BOT_NAME (Your Bot Name)
 ENV SPEECH_KEY (Your Speech key)
 ENV SPEECH_REGION (Your Speech region)
 
-# Add file
-ADD src/ ./
-
 # set-up command
 RUN apt-get --yes update; apt-get --yes upgrade;
 RUN apt --yes install libgstreamer1.0-0
@@ -23,6 +20,10 @@ RUN apt --yes install gstreamer1.0-plugins-base
 RUN apt --yes install gstreamer1.0-plugins-good
 RUN apt --yes install gstreamer1.0-plugins-bad
 RUN apt --yes install gstreamer1.0-plugins-ugly
+
+# Add file
+ADD src/ ./
+
 RUN pip install -r requirements.txt
 
 # start-up command

@@ -17,7 +17,7 @@ from BotCmd import set_command
 def start(bot_name="ChatGPT"):
     logging.basicConfig(level=logging.DEBUG)  # set logging level
     handler = logging.FileHandler(filename='../bot.log', encoding='utf-8', mode='w')  # create log file handler
-    logging.info(f"{bot_name} Discord Bot is starting...")
+    logging.info(f"{bot_name} Discord Bot is starting... (v0.1.6)")
 
     # create ChatGPT chatbot
     chatbot = AsyncChatbot(config={
