@@ -1,9 +1,9 @@
-version: 0.0.1
+version: 0.1.0
 
 services:
-  db:
+  nekogpt_db:
     restart: always
-    container_name: NekoGPT_DB
+    container_name: nekogpt_db
     image: mariadb:latest
     environment:
       - MARIADB_USER=NekoGPT
@@ -15,21 +15,21 @@ services:
     volumes:
         - ./sql:/docker-entrypoint-initdb.d
 
-  app:
-    container_name: NekoGPT
+  nekogpt:
+    container_name: nekogpt
     restart: always
-    image: cocomine/nekogpt:latest
+    image: cocomine/nekogpt:0.1.0
     environment:
       - BOT_NAME=NekoGPT
       - CHATGPT_TOKEN=(Your ChatGPT access token)
       - DISCORD_TOKEN=(Your Discord token)
       - MYSQL_DATABASE=NekoGPT
-      - MYSQL_HOST=NekoGPT_DB
+      - MYSQL_HOST=nekogpt_db
       - MYSQL_USER=NekoGPT
       - MYSQL_PASSWORD=xO6_s*xJtd
       - SPEECH_KEY=(Your Speech key)
       - SPEECH_REGION=(Your Speech region)
     links:
-      - db
+      - nekogpt_db
     depends_on:
-      - db
+      - nekogpt_db
