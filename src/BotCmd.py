@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 import discord
 from discord import Color, Embed
@@ -18,6 +19,7 @@ def set_command(client: commands.Bot, db: connect, chatbot: AsyncChatbot, bot_na
     @commands.is_owner()
     @commands.bot_has_permissions(send_messages=True)
     async def ping(interaction: discord.Interaction):
+        logging.info(f"{interaction.user} pinged {client.user}")
         await interaction.response.send_message(f"Pong! {round(client.latency * 1000)}ms", ephemeral=True)
 
     # Set Enable or Disable reply all message in channel
@@ -27,7 +29,9 @@ def set_command(client: commands.Bot, db: connect, chatbot: AsyncChatbot, bot_na
     @commands.bot_has_permissions(read_message_history=True, send_messages=True, use_external_emojis=True,
                                   add_reactions=True)
     async def reply_this(interaction: discord.Interaction):
+        logging.info(f"{interaction.user} set {interaction.guild} reply all message in {interaction.channel}")
         await interaction.response.defer(ephemeral=True)
+
         cursor = db.cursor()
         cursor.execute("SELECT * FROM ReplyThis WHERE Guild_ID = %s AND channel_ID = %s",
                        (interaction.guild.id, interaction.channel.id,))
@@ -63,7 +67,9 @@ def set_command(client: commands.Bot, db: connect, chatbot: AsyncChatbot, bot_na
     @commands.bot_has_permissions(read_message_history=True, send_messages=True, use_external_emojis=True,
                                   add_reactions=True)
     async def reply_at(interaction: discord.Interaction):
+        logging.info(f"{interaction.user} set {interaction.guild} reply @{client.user} message")
         await interaction.response.defer(ephemeral=True)
+
         cursor = db.cursor()
         cursor.execute("SELECT * FROM Guild WHERE Guild_ID = %s AND replyAt = TRUE", (interaction.guild.id,))
         result = cursor.fetchone()
@@ -94,6 +100,8 @@ def set_command(client: commands.Bot, db: connect, chatbot: AsyncChatbot, bot_na
     @tree.command(name="dm-chat", description=f"Start chat with {bot_name} in DM")
     @commands.guild_only()
     async def dm_chat(interaction: discord.Interaction):
+        logging.info(f"{interaction.user} start chat with {client.user} in DM")
+
         try:
             await interaction.user.send(
                 f"Hello, I'm {client.user}, I can chat with you. Just send me message and I will reply it.")
@@ -113,6 +121,7 @@ def set_command(client: commands.Bot, db: connect, chatbot: AsyncChatbot, bot_na
     @commands.bot_has_permissions(read_message_history=True, send_messages=True, use_external_emojis=True,
                                   add_reactions=True)
     async def reset(interaction: discord.Interaction):
+        logging.info(f"{interaction.user} reset all conversation in {interaction.guild}")
         await interaction.response.defer(ephemeral=True)
         cursor = db.cursor()
 
@@ -149,6 +158,7 @@ def set_command(client: commands.Bot, db: connect, chatbot: AsyncChatbot, bot_na
             await interaction.response.send_message(f"❌ This command only can be used in DM", ephemeral=True)
             return
 
+        logging.info(f"{interaction.user} reset conversation in DM")
         await interaction.response.defer(ephemeral=True)
         cursor = db.cursor()
         cursor.execute("SELECT * FROM DM WHERE User = %s", (interaction.user.id,))
@@ -172,7 +182,9 @@ def set_command(client: commands.Bot, db: connect, chatbot: AsyncChatbot, bot_na
     @commands.guild_only()
     @commands.bot_has_permissions(send_messages=True)
     async def help(interaction: discord.Interaction):
+        logging.info(f"{interaction.user} show help menu")
         await interaction.response.defer(ephemeral=True)
+        cursor = db.cursor()
 
         help_embed = Embed(title=f"{client.user} | Help menu", color=Color.yellow())
         help_embed.set_image(url=client.user.avatar.url)

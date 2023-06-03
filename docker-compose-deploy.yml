@@ -1,35 +1,39 @@
-version: 0.1.0
+version: 0.1.5
 
 services:
-  nekogpt_db:
-    restart: always
-    container_name: nekogpt_db
-    image: mariadb:latest
-    environment:
-      - MARIADB_USER=NekoGPT
-      - MARIADB_PASSWORD=xO6_s*xJtd
-      - MARIADB_ROOT_PASSWORD=root
-      - MARIADB_DATABASE=NekoGPT
-    ports:
-      - 3306:3306
-    volumes:
-        - ./sql:/docker-entrypoint-initdb.d
+    nekogpt_db:
+        restart: always
+        image: mariadb:latest
+        environment:
+            - MARIADB_USER=NekoGPT
+            - MARIADB_PASSWORD=xO6_s*xJtd
+            - MARIADB_ROOT_PASSWORD=root
+            - MARIADB_DATABASE=NekoGPT
+        networks:
+            - nekogpt_net
+        ports:
+            - 127.0.0.1:3306:3306
+        volumes:
+            - ./sql:/docker-entrypoint-initdb.d
 
-  nekogpt:
-    container_name: nekogpt
-    restart: always
-    image: cocomine/nekogpt:0.1.0
-    environment:
-      - BOT_NAME=NekoGPT
-      - CHATGPT_TOKEN=(Your ChatGPT access token)
-      - DISCORD_TOKEN=(Your Discord token)
-      - MYSQL_DATABASE=NekoGPT
-      - MYSQL_HOST=nekogpt_db
-      - MYSQL_USER=NekoGPT
-      - MYSQL_PASSWORD=xO6_s*xJtd
-      - SPEECH_KEY=(Your Speech key)
-      - SPEECH_REGION=(Your Speech region)
-    links:
-      - nekogpt_db
-    depends_on:
-      - nekogpt_db
+    nekogpt:
+        restart: always
+        image: cocomine/nekogpt:0.1.5
+        environment:
+            - BOT_NAME=NekoGPT
+            - CHATGPT_TOKEN=(Your ChatGPT access token)
+            - DISCORD_TOKEN=(Your Discord token)
+            - MYSQL_DATABASE=NekoGPT
+            - MYSQL_HOST=nekogpt_db
+            - MYSQL_USER=NekoGPT
+            - MYSQL_PASSWORD=xO6_s*xJtd
+            - SPEECH_KEY=(Your Speech key)
+            - SPEECH_REGION=(Your Speech region)
+        depends_on:
+            - nekogpt_db
+        networks:
+            - nekogpt_net
+
+networks:
+    nekogpt_net:
+        driver: bridge

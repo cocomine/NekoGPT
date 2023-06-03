@@ -23,6 +23,7 @@ def start(bot_name="ChatGPT"):
     chatbot = AsyncChatbot(config={
         "access_token": os.getenv("CHATGPT_TOKEN")
     })
+    logging.info(f"{bot_name} ChatGPT is connected.")
 
     # create mysql connection
     mydb = connect(
@@ -31,6 +32,7 @@ def start(bot_name="ChatGPT"):
         password=os.getenv("MYSQL_PASSWORD"),
         database=os.getenv("MYSQL_DATABASE")
     )
+    logging.info(f"{bot_name} MySQL is connected.")
 
     # create intents
     intents = discord.Intents.default()

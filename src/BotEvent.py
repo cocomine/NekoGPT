@@ -1,5 +1,6 @@
 import asyncio
 import io
+import logging
 import os
 
 import discord
@@ -18,14 +19,14 @@ def set_event_lister(client: commands.Bot, db: connect, chatbot: AsyncChatbot, b
 
     @client.event
     async def on_ready():
-        print(f'{client.user} has connected to Discord!')
+        logging.info(f'{client.user} has connected to Discord!')
         try:
             synced = await client.tree.sync()
-            print(f"Synced {synced} commands")
+            logging.info(f"Synced {synced.count()} commands")
             await client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching,
-                                                                    name=f"@{bot_name} chat with me!"))
+                                                                   name=f"@{bot_name} chat with me!"))
         except Exception as e:
-            print(e)
+            logging.debug(e)
 
         # create voice message tmp folder
         voice_message_tmp_path = os.path.join(os.path.dirname(__file__), "voice")
@@ -38,7 +39,7 @@ def set_event_lister(client: commands.Bot, db: connect, chatbot: AsyncChatbot, b
     # add into server
     @client.event
     async def on_guild_join(guild: discord.Guild):
-        print(f"Joined {guild.name} server. ({guild.id})")
+        logging.info(f"Joined {guild.name} server. ({guild.id})")
 
         # add into database
         cursor = db.cursor()
@@ -48,7 +49,7 @@ def set_event_lister(client: commands.Bot, db: connect, chatbot: AsyncChatbot, b
     # remove from server
     @client.event
     async def on_guild_remove(guild: discord.Guild):
-        print(f"Left {guild.name} server. ({guild.id})")
+        logging.info(f"Left {guild.name} server. ({guild.id})")
         cursor = db.cursor()
 
         # stop all conversation
@@ -73,7 +74,8 @@ def set_event_lister(client: commands.Bot, db: connect, chatbot: AsyncChatbot, b
         cursor = db.cursor()
 
         # stop all conversation
-        cursor.execute("SELECT * FROM ReplyThis WHERE Channel_ID = %s AND Guild_ID = %s", (channel.id, channel.guild.id))
+        cursor.execute("SELECT * FROM ReplyThis WHERE Channel_ID = %s AND Guild_ID = %s",
+                       (channel.id, channel.guild.id))
         result = cursor.fetchall()
         for row in result:
             if row[2] is not None:
@@ -85,8 +87,8 @@ def set_event_lister(client: commands.Bot, db: connect, chatbot: AsyncChatbot, b
     # when message is sent
     @client.event
     async def on_message(message: discord.Message):
-        print(f"Message from {message.author} ({message.author.id}): {message.content}")
-        print(f"Attachments: {message.attachments}")
+        logging.info(f"Message from {message.author} ({message.author.id}): {message.content}")
+        logging.info(f"Attachments: {message.attachments}")
         cursor = db.cursor()
         if message.author == client.user:
             return
@@ -138,7 +140,8 @@ def set_event_lister(client: commands.Bot, db: connect, chatbot: AsyncChatbot, b
                             os.remove(filename)  # remove voice message file
 
                             # show original text
-                            embed = discord.Embed(title=f"Detected original text", description=ask, color=Color.blue(), type="article")
+                            embed = discord.Embed(title=f"Detected original text", description=ask, color=Color.blue(),
+                                                  type="article")
                             embed.set_author(name=f"{message.author}", icon_url=message.author.avatar.url)
                             await msg.edit(content="<a:loading:1112646025090445354>", embed=embed)
 
@@ -147,7 +150,7 @@ def set_event_lister(client: commands.Bot, db: connect, chatbot: AsyncChatbot, b
                     await message.add_reaction("✅")
 
             except Exception as e:
-                print(e)
+                logging.debug(e)
                 # add error reaction
                 await message.add_reaction("❌")
                 await message.channel.send("🔥 Oh no! Something went wrong. Please try again later.")
@@ -205,7 +208,7 @@ def set_event_lister(client: commands.Bot, db: connect, chatbot: AsyncChatbot, b
                         await message.add_reaction("✅")
 
                 except Exception as e:
-                    print(e)
+                    logging.debug(e)
                     # add error reaction
                     await message.add_reaction("❌")
                     if isinstance(e, Forbidden):
@@ -246,7 +249,7 @@ def set_event_lister(client: commands.Bot, db: connect, chatbot: AsyncChatbot, b
                 await message.add_reaction("✅")
 
             except Exception as e:
-                print(e)
+                logging.debug(e)
                 # add error reaction
                 await message.add_reaction("❌")
                 if isinstance(e, Forbidden):
