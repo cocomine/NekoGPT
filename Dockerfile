@@ -1,6 +1,6 @@
 FROM python:latest
 LABEL authors="cocomine"
-LABEL version="0.1.6"
+LABEL version="0.1.7"
 WORKDIR /bot
 
 ENV DISCORD_TOKEN (Your Discord token)

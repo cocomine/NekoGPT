@@ -1,9 +1,11 @@
 import asyncio
+import io
 
 import azure.cognitiveservices.speech as speechsdk
 
 
 class STT:
+    # https://docs.microsoft.com/en-us/azure/cognitive-services/speech-service/language-support#speech-to-text
     def __init__(self, speech_key: str, speech_region: str):
         self.speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=speech_region)
         self.speech_config.speech_recognition_language = "zh-HK"
@@ -11,12 +13,14 @@ class STT:
             languages=["zh-HK", "zh-TW", "en-US"]
         )
 
-    async def speech_to_text(self, audio_file: str):
+    # https://docs.microsoft.com/en-us/azure/cognitive-services/speech-service/quickstart-python#speech-to-text
+    async def speech_to_text(self, audio_file: bytes):
         # Creates stream reader object to read audio from an external file.
-        binary_file_reader = BinaryFileReaderCallback(audio_file)
+        binary_file_reader = BinaryReaderCallback(audio_file)
         compressed_format = speechsdk.audio.AudioStreamFormat(
             compressed_stream_format=speechsdk.AudioStreamContainerFormat.OGG_OPUS)
-        stream = speechsdk.audio.PullAudioInputStream(stream_format=compressed_format, pull_stream_callback=binary_file_reader)
+        stream = speechsdk.audio.PullAudioInputStream(stream_format=compressed_format,
+                                                      pull_stream_callback=binary_file_reader)
 
         # Creates a speech recognizer using a file as audio input.
         audio_config = speechsdk.audio.AudioConfig(stream=stream)
@@ -30,42 +34,44 @@ class STT:
         done = False
         text = ""
 
+        # session_stopped callback
         def stop_cb(evt):
             print('CLOSING on {}'.format(evt))
-            speech_recognizer.stop_continuous_recognition()
+            speech_recognizer.stop_continuous_recognition_async()
             nonlocal done
             done = True
 
+        # recognized callback
         def recognized_cb(evt):
             nonlocal text
             text += evt.result.text
 
-        # speech_recognizer.recognizing.connect(lambda evt: print('RECOGNIZING: {}'.format(evt)))
-        speech_recognizer.recognized.connect(lambda evt: print('RECOGNIZED: {}'.format(evt)))
-        # speech_recognizer.session_started.connect(lambda evt: print('SESSION STARTED: {}'.format(evt)))
-        # speech_recognizer.session_stopped.connect(lambda evt: print('SESSION STOPPED {}'.format(evt)))
-        # speech_recognizer.canceled.connect(lambda evt: print('CANCELED {}'.format(evt)))
-
+        # Connect callbacks to the events fired by the speech recognizer
         speech_recognizer.session_stopped.connect(stop_cb)
         speech_recognizer.recognized.connect(recognized_cb)
 
-        speech_recognizer.start_continuous_recognition()
+        # Start continuous speech recognition
+        speech_recognizer.start_continuous_recognition_async()
+
+        # Waits for recognition to finish
         while not done:
             await asyncio.sleep(1)
 
         return text
 
 
-class BinaryFileReaderCallback(speechsdk.audio.PullAudioInputStreamCallback):
-    def __init__(self, filename: str):
+# https://docs.microsoft.com/en-us/python/api/azure-cognitiveservices-speech/azure.cognitiveservices.speech.audio.pullaudioinputstreamcallback?view=azure-python
+class BinaryReaderCallback(speechsdk.audio.PullAudioInputStreamCallback):
+    def __init__(self, file: bytes):
         super().__init__()
-        self._file_h = open(filename, "rb")
+        self._file = io.BytesIO(file)
 
+    # https://docs.microsoft.com/en-us/python/api/azure-cognitiveservices-speech/azure.cognitiveservices.speech.audio.pullaudioinputstreamcallback?view=azure-python#read
     def read(self, buffer: memoryview) -> int:
         # print('trying to read {} frames'.format(buffer.nbytes))
         try:
             size = buffer.nbytes
-            frames = self._file_h.read(size)
+            frames = self._file.read(size)
 
             buffer[:len(frames)] = frames
             # print('read {} frames'.format(len(frames)))
@@ -75,10 +81,11 @@ class BinaryFileReaderCallback(speechsdk.audio.PullAudioInputStreamCallback):
             # print('Exception in `read`: {}'.format(ex))
             raise
 
+    # https://docs.microsoft.com/en-us/python/api/azure-cognitiveservices-speech/azure.cognitiveservices.speech.audio.pullaudioinputstreamcallback?view=azure-python#close
     def close(self) -> None:
         # print('closing file')
         try:
-            self._file_h.close()
+            self._file.close()
         except Exception as ex:
             # print('Exception in `close`: {}'.format(ex))
             raise

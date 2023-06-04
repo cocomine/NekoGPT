@@ -17,24 +17,38 @@ def set_event_lister(client: commands.Bot, db: connect, chatbot: AsyncChatbot, b
     prompt = Prompt(chatbot)
     stt = STT(os.environ["SPEECH_KEY"], os.environ["SPEECH_REGION"])
 
+    # Generate reply
+    async def reply(message: discord.Message, conversation: str, msg: discord.Message):
+        ask = message.content
+
+        # check if message is voice message
+        if ask == "" and message.attachments[0] is not None:
+            attachments = message.attachments[0]
+            if attachments.content_type == "audio/ogg" and attachments.filename == "voice-message.ogg":
+                # convert voice message to text
+                ask = await stt.speech_to_text(await attachments.read())
+                print(f"Voice message: {ask}")
+
+                # show original text
+                embed = discord.Embed(title=f"Detected original text", description=ask,
+                                      color=Color.blue(),
+                                      type="article")
+                embed.set_author(name=f"{message.author}", icon_url=message.author.avatar.url)
+                await msg.edit(content="<a:loading:1112646025090445354>", embed=embed)
+
+        await prompt.ask(conversation, msg, ask)
+        await message.add_reaction("✅")
+
     @client.event
     async def on_ready():
         logging.info(f'{client.user} has connected to Discord!')
         try:
             synced = await client.tree.sync()
-            logging.info(f"Synced {synced.count} commands")
+            logging.info(f"Synced {len(synced)} commands")
             await client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching,
                                                                    name=f"@{bot_name} chat with me!"))
         except Exception as e:
             logging.debug(e)
-
-        # create voice message tmp folder
-        voice_message_tmp_path = os.path.join(os.path.dirname(__file__), "voice")
-        if not os.path.exists(voice_message_tmp_path):
-            os.mkdir(voice_message_tmp_path)
-        elif not os.path.isdir(voice_message_tmp_path):
-            os.remove(voice_message_tmp_path)
-            os.mkdir(voice_message_tmp_path)
 
     # add into server
     @client.event
@@ -125,29 +139,7 @@ def set_event_lister(client: commands.Bot, db: connect, chatbot: AsyncChatbot, b
                     cursor.execute("UPDATE DM SET replying = TRUE WHERE User = %s",
                                    (message.author.id,))
                     db.commit()
-                    ask = message.content
-
-                    # check if message is voice message
-                    if ask == "" and message.attachments[0] is not None:
-                        attachments = message.attachments[0]
-                        if attachments.content_type == "audio/ogg" and attachments.filename == "voice-message.ogg":
-                            filename = f"voice\\{message.id}.ogg"
-                            await attachments.save(filename)  # save voice message
-
-                            # convert voice message to text
-                            ask = await stt.speech_to_text(filename)
-                            print(f"Voice message: {ask}")
-                            os.remove(filename)  # remove voice message file
-
-                            # show original text
-                            embed = discord.Embed(title=f"Detected original text", description=ask, color=Color.blue(),
-                                                  type="article")
-                            embed.set_author(name=f"{message.author}", icon_url=message.author.avatar.url)
-                            await msg.edit(content="<a:loading:1112646025090445354>", embed=embed)
-
-                    # ask chatbot
-                    await prompt.ask(conversation, msg, ask)
-                    await message.add_reaction("✅")
+                    await reply(message, conversation, msg)
 
             except Exception as e:
                 logging.debug(e)
@@ -203,9 +195,7 @@ def set_event_lister(client: commands.Bot, db: connect, chatbot: AsyncChatbot, b
                         cursor.execute("UPDATE ReplyAt SET replying = TRUE WHERE Guild_ID = %s AND user = %s",
                                        (message.guild.id, message.author.id))
                         db.commit()
-
-                        await prompt.ask(conversation, msg, message.content)
-                        await message.add_reaction("✅")
+                        await reply(message, conversation, msg)
 
                 except Exception as e:
                     logging.debug(e)
@@ -249,8 +239,7 @@ def set_event_lister(client: commands.Bot, db: connect, chatbot: AsyncChatbot, b
                 await message.add_reaction("<a:loading:1112646025090445354>")
                 msg = await message.reply("<a:loading:1112646025090445354>")
 
-                await prompt.ask(conversation, msg, message.content)
-                await message.add_reaction("✅")
+                await reply(message, conversation, msg)
 
             except Exception as e:
                 logging.debug(e)
