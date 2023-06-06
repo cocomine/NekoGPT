@@ -1,4 +1,4 @@
-version: 0.1.7
+version: 0.1.8
 
 services:
     nekogpt_db:
@@ -18,7 +18,7 @@ services:
 
     nekogpt:
         restart: always
-        image: cocomine/nekogpt:0.1.7
+        image: cocomine/nekogpt:0.1.8
         environment:
             - BOT_NAME=NekoGPT
             - CHATGPT_TOKEN=(Your ChatGPT access token)

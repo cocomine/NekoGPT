@@ -96,7 +96,6 @@ def set_command(client: commands.Bot, db: connect, chatbot: AsyncChatbot, bot_na
             await interaction.followup.send(f"🔴 {client.user} will not reply <@{client.user.id}> message")
 
     # Start DM message
-    # todo
     @tree.command(name="dm-chat", description=f"Start chat with {bot_name} in DM")
     @commands.guild_only()
     async def dm_chat(interaction: discord.Interaction):
@@ -178,16 +177,70 @@ def set_command(client: commands.Bot, db: connect, chatbot: AsyncChatbot, bot_na
         await interaction.followup.send(f"🔄 {client.user} has reset conversation in DM")
 
     # command help
-    @tree.command(name="help", description=f"Show {bot_name} command help")
+    @tree.command(name="help", description=f"Show {bot_name} help menu")
     @commands.guild_only()
     @commands.bot_has_permissions(send_messages=True)
     async def help(interaction: discord.Interaction):
         logging.info(f"{interaction.user} show help menu")
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.defer()
         cursor = db.cursor()
 
+        # Get all reply channel
+        cursor.execute("SELECT channel_ID FROM ReplyThis WHERE Guild_ID = %s", (interaction.guild.id,))
+        result = cursor.fetchall()
+
+        ReplyThis = ""
+        for row in result:
+            ReplyThis += f"<#{row[0]}>, "
+
+        # Get @mention is enabled or not
+        cursor.execute("SELECT replyAt FROM Guild WHERE Guild_ID = %s", (interaction.guild.id,))
+        result = cursor.fetchone()
+
+        ReplyAt = "Disabled"
+        if result[0] is True:
+            ReplyAt = "Enabled"
+
+        # Print help menu
         help_embed = Embed(title=f"{client.user} | Help menu", color=Color.yellow())
-        help_embed.set_image(url=client.user.avatar.url)
-        help_embed.add_field(name="</reply-this:1112069656178610266>", value="Show this help menu", inline=False)
+        help_embed.set_author(icon_url=client.user.avatar.url, name=client.user)
+        help_embed.add_field(name="</help:1114586386465574912>", value=f"Show {client.user} help menu", inline=False)
+        help_embed.add_field(name="</dm-chat:1112076933291835443>", value=f"Start DM chat with {client.user}", inline=False)
+        help_embed.add_field(name="</reply-this:1112069656178610266>", value=f"Set {client.user} reply all message in {interaction.channel.mention} *(Administrator only)*", inline=False)
+        help_embed.add_field(name="</reply-at:1112076933291835442>", value=f"Set {client.user} reply @mention message in this server *(Administrator only)*", inline=False)
+        help_embed.add_field(name="</reset:1112663618811600916>", value=f"Reset {client.user} all conversation in this server *(Administrator only)*", inline=False)
+        help_embed.add_field(name="</reset-dm:1112775422862700615>", value=f"Reset {client.user} DM conversation *(DM only)*", inline=False)
+        help_embed.add_field(name="", value="", inline=False)
+        help_embed.add_field(name="The server's current settings", value="", inline=False)
+        help_embed.add_field(name="reply-this", value=ReplyThis, inline=True)
+        help_embed.add_field(name="reply-at", value=f"`{ReplyAt}`", inline=True)
 
         await interaction.followup.send(ephemeral=True, embed=help_embed)
+
+    # join voice channel
+    @tree.command(name="join", description=f"Join voice channel")
+    @commands.guild_only()
+    @commands.bot_has_permissions(connect=True, speak=True)
+    async def join(interaction: discord.Interaction):
+        logging.info(f"{interaction.user} join voice channel")
+        await interaction.response.defer()
+        if interaction.author.voice is None:
+            await interaction.followup.send(f"❌ You are not in any voice channel", ephemeral=True)
+            return
+
+        await interaction.author.voice.channel.connect()
+        await interaction.followup.send(f"🔊 {client.user} has joined {interaction.author.voice.channel.mention}")
+
+    # leave voice channel
+    @tree.command(name="leave", description=f"Leave voice channel")
+    @commands.guild_only()
+    @commands.bot_has_permissions(connect=True, speak=True)
+    async def leave(interaction: discord.Interaction):
+        logging.info(f"{interaction.user} leave voice channel")
+        await interaction.response.defer()
+        if interaction.guild.voice_client is None:
+            await interaction.followup.send(f"❌ I'm not in any voice channel", ephemeral=True)
+            return
+
+        await interaction.guild.voice_client.disconnect()
+        await interaction.followup.send(f"🔊 {client.user} has left {interaction.guild.voice_client.channel.mention}")

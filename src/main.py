@@ -11,13 +11,14 @@ from revChatGPT.V1 import AsyncChatbot
 
 from BotEvent import set_event_lister
 from BotCmd import set_command
+from Task import Task
 
 
 # starting bot
 def start(bot_name="ChatGPT"):
     logging.basicConfig(level=logging.DEBUG)  # set logging level
     handler = logging.FileHandler(filename='../bot.log', encoding='utf-8', mode='w')  # create log file handler
-    logging.info(f"{bot_name} Discord Bot is starting... (v0.1.7)")
+    logging.info(f"{bot_name} Discord Bot is starting... (v0.1.8)")
 
     # create ChatGPT chatbot
     chatbot = AsyncChatbot(config={
@@ -26,6 +27,7 @@ def start(bot_name="ChatGPT"):
     logging.info(f"{bot_name} ChatGPT is connected.")
 
     # create mysql connection
+    logging.info(f"{bot_name} Connecting to MySQL...")
     mydb = connect(
         host=os.getenv("MYSQL_HOST"),
         user=os.getenv("MYSQL_USER"),

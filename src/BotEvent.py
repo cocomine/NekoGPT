@@ -11,6 +11,7 @@ from revChatGPT.V1 import AsyncChatbot
 
 from Prompt import Prompt
 from STT import STT
+from Task import Task
 
 
 def set_event_lister(client: commands.Bot, db: connect, chatbot: AsyncChatbot, bot_name: str):
@@ -27,7 +28,7 @@ def set_event_lister(client: commands.Bot, db: connect, chatbot: AsyncChatbot, b
             if attachments.content_type == "audio/ogg" and attachments.filename == "voice-message.ogg":
                 # convert voice message to text
                 ask = await stt.speech_to_text(await attachments.read())
-                print(f"Voice message: {ask}")
+                logging.info(f"Voice message {message.author}: {ask}")
 
                 # show original text
                 embed = discord.Embed(title=f"Detected original text", description=ask,
@@ -38,6 +39,10 @@ def set_event_lister(client: commands.Bot, db: connect, chatbot: AsyncChatbot, b
 
         await prompt.ask(conversation, msg, ask)
         await message.add_reaction("✅")
+
+    @client.event
+    async def setup_hook():
+        Task(client, db)
 
     @client.event
     async def on_ready():
