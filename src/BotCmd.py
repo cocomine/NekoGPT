@@ -190,8 +190,9 @@ def set_command(client: commands.Bot, db: connect, chatbot: AsyncChatbot, bot_na
         result = cursor.fetchall()
 
         ReplyThis = ""
-        for row in result:
-            ReplyThis += f"<#{row[0]}>, "
+        ReplyThis = result.join(lambda x: f"<#{x[0]}>")
+        # for row in result:
+        #     ReplyThis += f"<#{row[0]}>, "
 
         # Get @mention is enabled or not
         cursor.execute("SELECT replyAt FROM Guild WHERE Guild_ID = %s", (interaction.guild.id,))
