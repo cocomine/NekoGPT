@@ -189,18 +189,17 @@ def set_command(client: commands.Bot, db: connect, chatbot: AsyncChatbot, bot_na
         cursor.execute("SELECT channel_ID FROM ReplyThis WHERE Guild_ID = %s", (interaction.guild.id,))
         result = cursor.fetchall()
 
-        ReplyThis = ""
-        ReplyThis = result.join(lambda x: f"<#{x[0]}>")
-        # for row in result:
-        #     ReplyThis += f"<#{row[0]}>, "
+        _reply_this = "🔴 Not set any channel"
+        if len(result) != 0:
+            _reply_this = ", ".join(f"<#{x[0]}>" for x in result)
 
         # Get @mention is enabled or not
         cursor.execute("SELECT replyAt FROM Guild WHERE Guild_ID = %s", (interaction.guild.id,))
         result = cursor.fetchone()
 
-        ReplyAt = "Disabled"
-        if result[0] is True:
-            ReplyAt = "Enabled"
+        _reply_at = "🔴 Disabled"
+        if result[0] is 1:
+            _reply_at = "🟢 Enabled"
 
         # Print help menu
         help_embed = Embed(title=f"{client.user} | Help menu", color=Color.yellow())
@@ -212,9 +211,9 @@ def set_command(client: commands.Bot, db: connect, chatbot: AsyncChatbot, bot_na
         help_embed.add_field(name="</reset:1112663618811600916>", value=f"Reset {client.user} all conversation in this server *(Administrator only)*", inline=False)
         help_embed.add_field(name="</reset-dm:1112775422862700615>", value=f"Reset {client.user} DM conversation *(DM only)*", inline=False)
         help_embed.add_field(name="", value="", inline=False)
-        help_embed.add_field(name="The server's current settings", value="", inline=False)
-        help_embed.add_field(name="reply-this", value=ReplyThis, inline=True)
-        help_embed.add_field(name="reply-at", value=f"`{ReplyAt}`", inline=True)
+        help_embed.add_field(name="Current Settings", value="The server's current settings", inline=False)
+        help_embed.add_field(name="reply-this", value=_reply_this, inline=True)
+        help_embed.add_field(name="reply-at", value=_reply_at, inline=True)
 
         await interaction.followup.send(ephemeral=True, embed=help_embed)
 
