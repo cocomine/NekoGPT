@@ -16,6 +16,7 @@ RUN apt --yes install gstreamer1.0-plugins-base
 RUN apt --yes install gstreamer1.0-plugins-good
 RUN apt --yes install gstreamer1.0-plugins-bad
 RUN apt --yes install gstreamer1.0-plugins-ugly
+RUN mkdir "../database"
 
 # Add file
 ADD src/ ./

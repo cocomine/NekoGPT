@@ -198,7 +198,7 @@ def set_command(client: commands.Bot, db: sqlite3.Connection, chatbot: AsyncChat
         result = cursor.fetchone()
 
         _reply_at = "🔴 Disabled"
-        if result[0] is 1:
+        if result[0] == 1:
             _reply_at = "🟢 Enabled"
 
         # Print help menu
