@@ -1,27 +1,22 @@
-import asyncio
-import io
 import logging
-import os
+import sqlite3
 
 import discord
-from discord import Forbidden, Color
 from discord.ext import commands
-from mysql.connector import connect
 from revChatGPT.V1 import AsyncChatbot
 
 from Prompt import Prompt
 from Reply import Reply
-from STT import STT
-from Task import Task
 
 
-def set_event_lister(client: commands.Bot, db: connect, chatbot: AsyncChatbot, bot_name: str):
+def set_event_lister(client: commands.Bot, db: sqlite3.Connection, chatbot: AsyncChatbot, bot_name: str):
     prompt = Prompt(chatbot)
     reply = Reply(db, chatbot, client)
 
     @client.event
     async def setup_hook():
-        Task(client, db)
+        # Task(client, db)
+        pass
 
     @client.event
     async def on_ready():

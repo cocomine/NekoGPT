@@ -1,12 +1,11 @@
 import asyncio
 import logging
 import os
+import sqlite3
 
 import discord
-import mysql
 from discord import Color, Forbidden
 from discord.ext import commands
-from mysql.connector import connect
 from revChatGPT.V1 import AsyncChatbot
 
 from Prompt import Prompt
@@ -15,7 +14,7 @@ from STT import STT
 
 
 class Reply:
-    def __init__(self, db: connect, chatbot: AsyncChatbot, client: commands.Bot):
+    def __init__(self, db: sqlite3.Connection, chatbot: AsyncChatbot, client: commands.Bot):
         self.db = db
         self.prompt = Prompt(chatbot)
         self.client = client

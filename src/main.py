@@ -1,40 +1,35 @@
 import logging
 import os
-import signal
+import sqlite3
 
 import discord
 from discord.ext import commands
-
-from mysql.connector import connect
 from dotenv import load_dotenv
 from revChatGPT.V1 import AsyncChatbot
 
-from BotEvent import set_event_lister
+import DatabaseHelper
 from BotCmd import set_command
-from Task import Task
+from BotEvent import set_event_lister
 
 
 # starting bot
 def start(bot_name="ChatGPT"):
     logging.basicConfig(level=logging.DEBUG)  # set logging level
     handler = logging.FileHandler(filename='../bot.log', encoding='utf-8', mode='w')  # create log file handler
-    logging.info(f"{bot_name} Discord Bot is starting... (v0.1.9)")
+    logging.info(f"{bot_name} Discord Bot is starting... (v0.2.0)")
 
     # create ChatGPT chatbot
-    chatbot = AsyncChatbot(config={
-        "access_token": os.getenv("CHATGPT_TOKEN")
-    })
+    chatbot = AsyncChatbot(config={"access_token": os.getenv("CHATGPT_TOKEN")})
     logging.info(f"{bot_name} ChatGPT is connected.")
 
     # create mysql connection
     logging.info(f"{bot_name} Connecting to MySQL...")
-    mydb = connect(
-        host=os.getenv("MYSQL_HOST"),
-        user=os.getenv("MYSQL_USER"),
-        password=os.getenv("MYSQL_PASSWORD"),
-        database=os.getenv("MYSQL_DATABASE")
-    )
+    mydb = sqlite3.connect("../database/nekogpt_database.db")
     logging.info(f"{bot_name} MySQL is connected.")
+
+    # check database update
+    logging.info(f"{bot_name} Checking database update...")
+    DatabaseHelper.database_helper(mydb, bot_name)
 
     # create intents
     intents = discord.Intents.default()

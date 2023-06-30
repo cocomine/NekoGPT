@@ -1,5 +1,4 @@
 import discord
-from discord import TextChannel
 from revChatGPT.V1 import AsyncChatbot
 
 

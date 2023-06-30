@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="NekoGPT@192.168.0.3" uuid="e9fbbe7f-c93f-440d-a3a5-95ebb053831e">
-      <driver-ref>mariadb</driver-ref>
+    <data-source source="LOCAL" name="nekogpt_database.db" uuid="aadec888-215a-4c3f-8d35-19dc2632fb9d">
+      <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
-      <jdbc-driver>org.mariadb.jdbc.Driver</jdbc-driver>
-      <jdbc-url>jdbc:mariadb://192.168.0.3:3306/NekoGPT</jdbc-url>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/database/nekogpt_database.db</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
   </component>

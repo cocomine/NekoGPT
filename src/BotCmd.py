@@ -1,16 +1,16 @@
 import asyncio
 import logging
+import sqlite3
 
 import discord
 from discord import Color, Embed
 from discord.ext import commands
-from mysql.connector import connect
 from revChatGPT.V1 import AsyncChatbot
 
 from Prompt import Prompt
 
 
-def set_command(client: commands.Bot, db: connect, chatbot: AsyncChatbot, bot_name: str):
+def set_command(client: commands.Bot, db: sqlite3.Connection, chatbot: AsyncChatbot, bot_name: str):
     tree = client.tree
     prompt = Prompt(chatbot)
 
