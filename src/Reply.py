@@ -53,13 +53,13 @@ class Reply:
             msg = await message.reply("<a:loading:1112646025090445354>")
 
             # check if conversation is started?
-            cursor.execute("SELECT * FROM DM WHERE User = %s", (message.author.id,))
+            cursor.execute("SELECT * FROM DM WHERE User = ?", (message.author.id,))
             result = cursor.fetchone()
 
             # start conversation if not started
             if result is None:
                 conversation = await self.prompt.start_new_conversation(message.author.name)
-                cursor.execute("INSERT INTO DM (User, conversation) VALUES (%s, %s)",
+                cursor.execute("INSERT INTO DM (User, conversation) VALUES (?, ?)",
                                (message.author.id, conversation))
                 self.db.commit()
                 await asyncio.sleep(1)
@@ -67,14 +67,14 @@ class Reply:
                 conversation = result[1]
 
             # check if bot is replying
-            cursor.execute("SELECT * FROM DM WHERE User = %s AND replying != TRUE",
+            cursor.execute("SELECT * FROM DM WHERE User = ? AND replying != TRUE",
                            (message.author.id,))
             result = cursor.fetchone()
 
             # reply message
             if result is not None:
                 # set is replying
-                cursor.execute("UPDATE DM SET replying = TRUE WHERE User = %s",
+                cursor.execute("UPDATE DM SET replying = TRUE WHERE User = ?",
                                (message.author.id,))
                 self.db.commit()
                 await self.reply(message, conversation, msg)
@@ -94,7 +94,7 @@ class Reply:
 
         finally:
             # set is not replying
-            cursor.execute("UPDATE DM SET replying = FALSE WHERE User = %s", (message.author.id,))
+            cursor.execute("UPDATE DM SET replying = FALSE WHERE User = ?", (message.author.id,))
             self.db.commit()
 
             # remove loading reaction
@@ -106,7 +106,7 @@ class Reply:
 
         # check replyAt is enabled
         await message.remove_reaction("✅", self.client.user)
-        cursor.execute("SELECT * FROM Guild WHERE Guild_ID = %s AND replyAt = TRUE", (message.guild.id,))
+        cursor.execute("SELECT * FROM Guild WHERE Guild_ID = ? AND replyAt = TRUE", (message.guild.id,))
         result = cursor.fetchone()
 
         if result is not None:
@@ -116,14 +116,14 @@ class Reply:
                 msg = await message.reply("<a:loading:1112646025090445354>")
 
                 # check if conversation is started?
-                cursor.execute("SELECT * FROM ReplyAt WHERE Guild_ID = %s AND user = %s",
+                cursor.execute("SELECT * FROM ReplyAt WHERE Guild_ID = %s AND user = ?",
                                (message.guild.id, message.author.id))
                 result = cursor.fetchone()
 
                 # start conversation if not started
                 if result is None:
                     conversation = await self.prompt.start_new_conversation()
-                    cursor.execute("INSERT INTO ReplyAt (Guild_ID, user, conversation) VALUES (%s, %s, %s)",
+                    cursor.execute("INSERT INTO ReplyAt (Guild_ID, user, conversation) VALUES (?, ?, ?)",
                                    (message.guild.id, message.author.id, conversation))
                     self.db.commit()
                     await asyncio.sleep(1)
@@ -131,14 +131,14 @@ class Reply:
                     conversation = result[2]
 
                 # check if bot is replying
-                cursor.execute("SELECT * FROM ReplyAt WHERE Guild_ID = %s AND user = %s AND replying != TRUE",
+                cursor.execute("SELECT * FROM ReplyAt WHERE Guild_ID = ? AND user = ? AND replying != TRUE",
                                (message.guild.id, message.author.id))
                 result = cursor.fetchone()
 
                 # reply message
                 if result is not None:
                     # set is replying
-                    cursor.execute("UPDATE ReplyAt SET replying = TRUE WHERE Guild_ID = %s AND user = %s",
+                    cursor.execute("UPDATE ReplyAt SET replying = TRUE WHERE Guild_ID = ? AND user = %s",
                                    (message.guild.id, message.author.id))
                     self.db.commit()
                     await self.reply(message, conversation, msg)
@@ -162,7 +162,7 @@ class Reply:
 
             finally:
                 # set is not replying
-                cursor.execute("UPDATE ReplyAt SET replying = FALSE WHERE Guild_ID = %s AND user = %s",
+                cursor.execute("UPDATE ReplyAt SET replying = FALSE WHERE Guild_ID = ? AND user = ?",
                                (message.guild.id, message.author.id))
                 self.db.commit()
 
@@ -176,13 +176,13 @@ class Reply:
     async def channel(self, message: discord.Message):
         cursor = self.db.cursor()
 
-        cursor.execute("SELECT * FROM ReplyThis WHERE Guild_ID = %s AND channel_ID = %s AND replying != TRUE",
+        cursor.execute("SELECT * FROM ReplyThis WHERE Guild_ID = ? AND channel_ID = ? AND replying != TRUE",
                        (message.guild.id, message.channel.id))
         result = cursor.fetchone()
 
         if result is not None:
             # set is replying
-            cursor.execute("UPDATE ReplyThis SET replying = TRUE WHERE Guild_ID = %s AND channel_ID = %s",
+            cursor.execute("UPDATE ReplyThis SET replying = TRUE WHERE Guild_ID = ? AND channel_ID = ?",
                            (message.guild.id, message.channel.id))
             self.db.commit()
             conversation = result[2]
@@ -215,7 +215,7 @@ class Reply:
 
             finally:
                 # set is not replying
-                cursor.execute("UPDATE ReplyThis SET replying = FALSE WHERE Guild_ID = %s AND channel_ID = %s",
+                cursor.execute("UPDATE ReplyThis SET replying = FALSE WHERE Guild_ID = ? AND channel_ID = ?",
                                (message.guild.id, message.channel.id))
                 self.db.commit()
 

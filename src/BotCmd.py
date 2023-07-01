@@ -33,7 +33,7 @@ def set_command(client: commands.Bot, db: sqlite3.Connection, chatbot: AsyncChat
         await interaction.response.defer(ephemeral=True)
 
         cursor = db.cursor()
-        cursor.execute("SELECT * FROM ReplyThis WHERE Guild_ID = %s AND channel_ID = %s",
+        cursor.execute("SELECT * FROM ReplyThis WHERE Guild_ID = ? AND channel_ID = ?",
                        (interaction.guild.id, interaction.channel.id,))
         result = cursor.fetchone()
 
@@ -43,7 +43,7 @@ def set_command(client: commands.Bot, db: sqlite3.Connection, chatbot: AsyncChat
             await asyncio.sleep(3)
 
             # add into database
-            cursor.execute("INSERT INTO ReplyThis VALUES (%s, %s, %s, FALSE)",
+            cursor.execute("INSERT INTO ReplyThis VALUES (?, ?, ?, FALSE)",
                            (interaction.guild.id, interaction.channel.id, conversation))
             db.commit()
             await interaction.followup.send(f"🟢 {client.user} will reply all message in this channel. "
@@ -55,7 +55,7 @@ def set_command(client: commands.Bot, db: sqlite3.Connection, chatbot: AsyncChat
                 await prompt.stop_conversation(result[2])
 
             # remove from database
-            cursor.execute("DELETE FROM ReplyThis WHERE Guild_ID = %s AND channel_ID = %s",
+            cursor.execute("DELETE FROM ReplyThis WHERE Guild_ID = ? AND channel_ID = ?",
                            (interaction.guild.id, interaction.channel.id))
             db.commit()
             await interaction.followup.send(f"🔴 {client.user} will not reply all message in this channel")
@@ -71,26 +71,26 @@ def set_command(client: commands.Bot, db: sqlite3.Connection, chatbot: AsyncChat
         await interaction.response.defer(ephemeral=True)
 
         cursor = db.cursor()
-        cursor.execute("SELECT * FROM Guild WHERE Guild_ID = %s AND replyAt = TRUE", (interaction.guild.id,))
+        cursor.execute("SELECT * FROM Guild WHERE Guild_ID = ? AND replyAt = TRUE", (interaction.guild.id,))
         result = cursor.fetchone()
 
         if result is None:
-            cursor.execute("UPDATE Guild SET replyAt = TRUE WHERE Guild_ID = %s", (interaction.guild.id,))
+            cursor.execute("UPDATE Guild SET replyAt = TRUE WHERE Guild_ID = ?", (interaction.guild.id,))
             db.commit()
             await interaction.followup.send(f"🟢 {client.user} will reply <@{client.user.id}> message. "
                                             f"Each user will have its own conversation.")
         else:
             # stop conversation
-            cursor.execute("SELECT * FROM ReplyAt WHERE Guild_ID = %s", (interaction.guild.id,))
+            cursor.execute("SELECT * FROM ReplyAt WHERE Guild_ID = ?", (interaction.guild.id,))
             result = cursor.fetchall()
             for row in result:
                 if row[2] is not None:
                     await prompt.stop_conversation(row[2])
 
             # remove from database
-            cursor.execute("DELETE FROM ReplyAt WHERE Guild_ID = %s", (interaction.guild.id,))
+            cursor.execute("DELETE FROM ReplyAt WHERE Guild_ID = ?", (interaction.guild.id,))
             db.commit()
-            cursor.execute("UPDATE Guild SET replyAt = FALSE WHERE Guild_ID = %s", (interaction.guild.id,))
+            cursor.execute("UPDATE Guild SET replyAt = FALSE WHERE Guild_ID = ?", (interaction.guild.id,))
             db.commit()
 
             await interaction.followup.send(f"🔴 {client.user} will not reply <@{client.user.id}> message")
@@ -125,24 +125,24 @@ def set_command(client: commands.Bot, db: sqlite3.Connection, chatbot: AsyncChat
         cursor = db.cursor()
 
         # stop all conversation
-        cursor.execute("SELECT * FROM ReplyThis WHERE Guild_ID = %s", (interaction.guild.id,))
+        cursor.execute("SELECT * FROM ReplyThis WHERE Guild_ID = ?", (interaction.guild.id,))
         result = cursor.fetchall()
         for row in result:
             if row[2] is not None:
                 await prompt.stop_conversation(row[2])
 
             conversation = await prompt.start_new_conversation()
-            cursor.execute("UPDATE ReplyThis SET conversation = %s WHERE Guild_ID = %s",
+            cursor.execute("UPDATE ReplyThis SET conversation = ? WHERE Guild_ID = ?",
                            (conversation, interaction.guild.id,))
             db.commit()
 
-        cursor.execute("SELECT * FROM ReplyAt WHERE Guild_ID = %s", (interaction.guild.id,))
+        cursor.execute("SELECT * FROM ReplyAt WHERE Guild_ID = ?", (interaction.guild.id,))
         result = cursor.fetchall()
         for row in result:
             if row[2] is not None:
                 await prompt.stop_conversation(row[2])
 
-        cursor.execute("DELETE FROM ReplyAt WHERE Guild_ID = %s", (interaction.guild.id,))
+        cursor.execute("DELETE FROM ReplyAt WHERE Guild_ID = ?", (interaction.guild.id,))
         db.commit()
 
         await interaction.followup.send(f"🔄 {client.user} has reset all conversation in this server",
@@ -160,7 +160,7 @@ def set_command(client: commands.Bot, db: sqlite3.Connection, chatbot: AsyncChat
         logging.info(f"{interaction.user} reset conversation in DM")
         await interaction.response.defer(ephemeral=True)
         cursor = db.cursor()
-        cursor.execute("SELECT * FROM DM WHERE User = %s", (interaction.user.id,))
+        cursor.execute("SELECT * FROM DM WHERE User = ?", (interaction.user.id,))
         result = cursor.fetchone()
 
         # stop conversation
@@ -170,7 +170,7 @@ def set_command(client: commands.Bot, db: sqlite3.Connection, chatbot: AsyncChat
 
             # reset conversation
             conversation = await prompt.start_new_conversation()
-            cursor.execute("UPDATE DM SET conversation = %s WHERE User = %s",
+            cursor.execute("UPDATE DM SET conversation = ? WHERE User = ?",
                            (conversation, interaction.user.id,))
             db.commit()
 
@@ -186,7 +186,7 @@ def set_command(client: commands.Bot, db: sqlite3.Connection, chatbot: AsyncChat
         cursor = db.cursor()
 
         # Get all reply channel
-        cursor.execute("SELECT channel_ID FROM ReplyThis WHERE Guild_ID = %s", (interaction.guild.id,))
+        cursor.execute("SELECT channel_ID FROM ReplyThis WHERE Guild_ID = ?", (interaction.guild.id,))
         result = cursor.fetchall()
 
         _reply_this = "🔴 Not set any channel"
@@ -194,7 +194,7 @@ def set_command(client: commands.Bot, db: sqlite3.Connection, chatbot: AsyncChat
             _reply_this = ", ".join(f"<#{x[0]}>" for x in result)
 
         # Get @mention is enabled or not
-        cursor.execute("SELECT replyAt FROM Guild WHERE Guild_ID = %s", (interaction.guild.id,))
+        cursor.execute("SELECT replyAt FROM Guild WHERE Guild_ID = ?", (interaction.guild.id,))
         result = cursor.fetchone()
 
         _reply_at = "🔴 Disabled"

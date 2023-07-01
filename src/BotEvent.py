@@ -15,7 +15,6 @@ def set_event_lister(client: commands.Bot, db: sqlite3.Connection, chatbot: Asyn
 
     @client.event
     async def setup_hook():
-        # Task(client, db)
         pass
 
     @client.event
@@ -36,7 +35,7 @@ def set_event_lister(client: commands.Bot, db: sqlite3.Connection, chatbot: Asyn
 
         # add into database
         cursor = db.cursor()
-        cursor.execute("INSERT INTO Guild (Guild_ID) VALUES (%s)", (guild.id,))
+        cursor.execute("INSERT INTO Guild (Guild_ID) VALUES (?)", (guild.id,))
         db.commit()
 
     # remove from server
@@ -46,20 +45,20 @@ def set_event_lister(client: commands.Bot, db: sqlite3.Connection, chatbot: Asyn
         cursor = db.cursor()
 
         # stop all conversation
-        cursor.execute("SELECT * FROM ReplyThis WHERE Guild_ID = %s", (guild.id,))
+        cursor.execute("SELECT * FROM ReplyThis WHERE Guild_ID = ?", (guild.id,))
         result = cursor.fetchall()
         for row in result:
             if row[2] is not None:
                 await prompt.stop_conversation(row[2])
 
-        cursor.execute("SELECT * FROM ReplyAt WHERE Guild_ID = %s", (guild.id,))
+        cursor.execute("SELECT * FROM ReplyAt WHERE Guild_ID = ?", (guild.id,))
         result = cursor.fetchall()
         for row in result:
             if row[2] is not None:
                 await prompt.stop_conversation(row[2])
 
         # remove from database
-        cursor.execute("DELETE FROM Guild WHERE Guild_ID = %s", (guild.id,))
+        cursor.execute("DELETE FROM Guild WHERE Guild_ID = ?", (guild.id,))
         db.commit()
 
     @client.event
@@ -67,14 +66,14 @@ def set_event_lister(client: commands.Bot, db: sqlite3.Connection, chatbot: Asyn
         cursor = db.cursor()
 
         # stop all conversation
-        cursor.execute("SELECT * FROM ReplyThis WHERE Channel_ID = %s AND Guild_ID = %s",
+        cursor.execute("SELECT * FROM ReplyThis WHERE Channel_ID = ? AND Guild_ID = ?",
                        (channel.id, channel.guild.id))
         result = cursor.fetchall()
         for row in result:
             if row[2] is not None:
                 await prompt.stop_conversation(row[2])
 
-        cursor.execute("DELETE FROM ReplyThis WHERE channel_ID = %s AND Guild_ID = %s", (channel.id, channel.guild.id))
+        cursor.execute("DELETE FROM ReplyThis WHERE channel_ID = ? AND Guild_ID = ?", (channel.id, channel.guild.id))
         db.commit()
 
     # when message is sent
