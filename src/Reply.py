@@ -1,4 +1,5 @@
 import asyncio
+import io
 import logging
 import os
 import sqlite3
@@ -11,6 +12,7 @@ from revChatGPT.V1 import AsyncChatbot
 from Prompt import Prompt
 from ReGenBtn import ReGenBtn
 from STT import STT
+from TTS import TTS
 
 
 class Reply:
@@ -19,28 +21,37 @@ class Reply:
         self.prompt = Prompt(chatbot)
         self.client = client
         self.stt = STT(os.environ["SPEECH_KEY"], os.environ["SPEECH_REGION"])
+        self.tts = TTS(os.environ["SPEECH_KEY"], os.environ["SPEECH_REGION"])
 
     # Generate reply
     async def reply(self, message: discord.Message, conversation: str, msg: discord.Message):
         ask = message.content
-
+        print(message)
         # check if message is voice message
         if ask == "" and message.attachments[0] is not None:
             attachments = message.attachments[0]
-            if attachments.content_type == "audio/ogg" and attachments.filename == "voice-message.ogg":
+
+            if attachments.is_voice_message():
                 # convert voice message to text
                 ask = await self.stt.speech_to_text(await attachments.read())
                 logging.info(f"Voice message {message.author}: {ask}")
 
                 # show original text
-                embed = discord.Embed(title=f"Detected original text", description=ask,
+                embed = discord.Embed(title=f"Detected content", description=ask,
                                       color=Color.blue(),
                                       type="article")
                 embed.set_author(name=f"{message.author}", icon_url=message.author.avatar.url)
                 await msg.edit(content="<a:loading:1112646025090445354>", embed=embed)
 
-        await self.prompt.ask(conversation, msg, ask)
-        await message.add_reaction("✅")
+        # reply
+        reply = await self.prompt.ask(conversation, msg, ask)
+
+        # convert reply to voice message
+        if reply != "":
+            voice = await self.tts.text_to_speech(reply)
+            await msg.edit(attachments=[discord.File(io.BytesIO(voice), filename="voice-message.ogg")])
+
+        await message.add_reaction("✅") # add check mark
 
     # DM
     async def dm(self, message: discord.Message):

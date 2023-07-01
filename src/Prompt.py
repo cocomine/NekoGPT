@@ -41,7 +41,7 @@ class Prompt:
         await self.chatbot.delete_conversation(conversation_id)
 
     # ask ChatGPT
-    async def ask(self, conversation_id: str, message: discord.Message, prompt: str):
+    async def ask(self, conversation_id: str, message: discord.Message, prompt: str) -> str:
         async with message.channel.typing():
             msg = ""
 
@@ -52,3 +52,5 @@ class Prompt:
                     if len(tmp) >= 10 or x['end_turn'] is True:
                         msg += tmp
                         await message.edit(content=msg)
+
+            return msg

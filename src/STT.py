@@ -1,5 +1,6 @@
 import asyncio
 import io
+import logging
 
 import azure.cognitiveservices.speech as speechsdk
 
@@ -12,14 +13,14 @@ class STT:
         self.auto_detect_source_language_config = speechsdk.AutoDetectSourceLanguageConfig(
             languages=["zh-HK", "zh-TW", "en-US"]
         )
+        self.compressed_format = speechsdk.audio.AudioStreamFormat(
+            compressed_stream_format=speechsdk.AudioStreamContainerFormat.OGG_OPUS)
 
     # https://docs.microsoft.com/en-us/azure/cognitive-services/speech-service/quickstart-python#speech-to-text
-    async def speech_to_text(self, audio_file: bytes):
+    async def speech_to_text(self, audio_file: bytes) -> str:
         # Creates stream reader object to read audio from an external file.
         binary_file_reader = BinaryReaderCallback(audio_file)
-        compressed_format = speechsdk.audio.AudioStreamFormat(
-            compressed_stream_format=speechsdk.AudioStreamContainerFormat.OGG_OPUS)
-        stream = speechsdk.audio.PullAudioInputStream(stream_format=compressed_format,
+        stream = speechsdk.audio.PullAudioInputStream(stream_format=self.compressed_format,
                                                       pull_stream_callback=binary_file_reader)
 
         # Creates a speech recognizer using a file as audio input.
@@ -36,7 +37,7 @@ class STT:
 
         # session_stopped callback
         def stop_cb(evt):
-            print('CLOSING on {}'.format(evt))
+            logging.info('CLOSING on {}'.format(evt))
             speech_recognizer.stop_continuous_recognition_async()
             nonlocal done
             done = True
