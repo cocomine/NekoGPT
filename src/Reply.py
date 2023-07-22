@@ -9,6 +9,7 @@ from discord import Color, Forbidden
 from discord.ext import commands
 from revChatGPT.V1 import AsyncChatbot
 
+import Mp3ToMp4
 from Prompt import Prompt
 from ReGenBtn import ReGenBtn
 from STT import STT
@@ -48,8 +49,28 @@ class Reply:
 
         # convert reply to voice message
         if reply != "":
-            voice = await self.tts.text_to_speech(reply)
-            await msg.edit(attachments=[discord.File(io.BytesIO(voice), filename="voice-message.ogg")])
+            # add loading reaction
+            await msg.edit(content=reply + "\n > <a:loading:1112646025090445354> Generating voice message...")
+
+            # convert text to voice message
+            await self.tts.text_to_speech_file(reply, f"voice-message_{conversation}.mp3")
+            # convert voice message to mp4
+            Mp3ToMp4.convert(f"voice-message_{conversation}.mp3", f"voice-message_{conversation}.mp4")
+
+            # remove loading reaction
+            await msg.edit(content=reply)
+
+            # upload voice message to discord
+            mp4 = open(f"voice-message_{conversation}.mp4", "rb")
+            await msg.edit(attachments=[discord.File(mp4, filename=f"voice-message_{conversation}.mp4")])
+
+            # remove mp4
+            mp4.close()
+            os.remove(f"voice-message_{conversation}.mp4")
+
+            # convert text to voice message(old method)
+            # voice = await self.tts.text_to_speech_bytes(reply)
+            # await msg.edit(attachments=[discord.File(io.BytesIO(voice), filename="voice-message.mp3")])
 
         await message.add_reaction("✅") # add check mark
 
