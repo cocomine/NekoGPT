@@ -18,6 +18,7 @@ RUN apt --yes install gstreamer1.0-plugins-bad
 RUN apt --yes install gstreamer1.0-plugins-ugly
 RUN apt --yes install ffmpeg
 RUN mkdir "../database"
+RUN mv ".env" "../database/.env"
 
 # Add file
 ADD src/ ./

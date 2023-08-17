@@ -44,5 +44,5 @@ def start(bot_name="ChatGPT"):
 
 # run bot
 if __name__ == "__main__":
-    load_dotenv()  # load .env file
+    load_dotenv("../database/.env")  # load .env file
     start(os.getenv("BOT_NAME"))
