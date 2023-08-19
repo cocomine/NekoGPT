@@ -1,6 +1,6 @@
 FROM python:latest
 LABEL authors="cocomine"
-LABEL version="0.2.10"
+LABEL version="0.2.11"
 WORKDIR /bot
 
 ENV DISCORD_TOKEN (Your Discord token)
@@ -18,7 +18,6 @@ RUN apt --yes install gstreamer1.0-plugins-bad
 RUN apt --yes install gstreamer1.0-plugins-ugly
 RUN apt --yes install ffmpeg
 RUN mkdir "../database"
-RUN mv ".env" "../database/.env"
 
 # Add file
 ADD src/ ./
