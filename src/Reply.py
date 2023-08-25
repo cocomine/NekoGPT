@@ -2,6 +2,7 @@ import asyncio
 import io
 import logging
 import os
+import re
 import sqlite3
 
 import discord
@@ -53,8 +54,14 @@ class Reply:
             # add loading reaction
             await msg.edit(content=reply + "\n > <a:loading:1112646025090445354> Generating voice message...")
 
+            # insert ',' after '喵~' or 'meow~'
+            p = re.compile(r"(meow|喵)~(?!！|。|，|？|!|,|\?|\.)")
+            speech_text = p.sub(r'\1~~ ,', reply)
+            print(speech_text)
+
             # convert text to voice message
-            await self.tts.text_to_speech_file(reply, f"voice-message_{conversation}.mp3")
+            await self.tts.text_to_speech_file(speech_text, f"voice-message_{conversation}.mp3")
+
             # convert voice message to mp4
             Mp3ToMp4.convert(f"voice-message_{conversation}.mp3", f"voice-message_{conversation}.mp4")
 
