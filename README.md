@@ -65,6 +65,18 @@ https://discord.com/api/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=27
 <hr>
 
 ## Local installation
+### Step 0: Install python3.10
+#### Ubuntu
+```bash
+sudo apt install python3.10
+```
+#### Arch Linux
+```bash
+sudo pacman -S python3.10
+```
+#### Windows
+Download and install from https://www.python.org/downloads/windows/
+
 ### Step 1: Clone this repository
 ```bash
 git clone https://github.com/cocomine/NekoGPT.git
