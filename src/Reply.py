@@ -124,6 +124,8 @@ class Reply:
 
                 btn = ReGenBtn(callback)
                 await msg.edit(view=btn)
+            else:
+                await msg.edit(content="<a:loading:1112646025090445354> In progress on the previous reply, please try again later.")
 
         except Exception as e:
             logging.debug(e)
@@ -209,7 +211,7 @@ class Reply:
                 await message.remove_reaction("<a:loading:1112646025090445354>", self.client.user)
 
         else:
-            await message.reply("🔥 Sorry, Thi server is not enabled **@mention** feature.")
+            await message.reply("🔥 Sorry, This server is not enabled **@mention** feature.")
 
     # channel message
     async def channel(self, message: discord.Message):
