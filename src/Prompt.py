@@ -1,4 +1,5 @@
 import discord
+from discord import Message
 from revChatGPT.V1 import AsyncChatbot
 
 
@@ -41,20 +42,26 @@ class Prompt:
         await self.chatbot.delete_conversation(conversation_id)
 
     # ask ChatGPT
-    async def ask(self, conversation_id: str, message: discord.Message, prompt: str) -> str:
+    async def ask(self, conversation_id: str, message: discord.Message, prompt: str) -> list[str | Message]:
         async with message.channel.typing():
             msg = ""
+            msg_all = ""
 
             async for x in self.chatbot.ask(prompt, conversation_id=conversation_id):
                 if x['message'] != "" and x['message'] != prompt:
-                    tmp = x['message'][len(msg):]
+                    tmp = x['message'][len(msg_all):]
 
                     if len(tmp) >= 10 or x['end_turn'] is True:
-                        if (len(tmp) + len(msg)) > 2000:
-                            message = await message.reply(tmp)
+                        # if message is too long, send it
+                        if (len(tmp) + len(msg)) >= 2000:
                             msg = tmp
+                            message = await message.reply(tmp)
+
+                        # else, add it to msg
                         else:
                             msg += tmp
                             await message.edit(content=msg)
 
-            return msg
+                        msg_all += tmp
+
+            return [msg_all, message]

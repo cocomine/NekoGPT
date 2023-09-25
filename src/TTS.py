@@ -15,14 +15,14 @@ class TTS:
         speech_synthesis_result = self.speech_synthesizer.speak_text_async(text).get()
 
         if speech_synthesis_result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
-            logging.info("Speech synthesized for text [{}]".format(text))
+            logging.debug("Speech synthesized for text [{}]".format(text))
         elif speech_synthesis_result.reason == speechsdk.ResultReason.Canceled:
             cancellation_details = speech_synthesis_result.cancellation_details
-            logging.info("Speech synthesis canceled: {}".format(cancellation_details.reason))
+            logging.debug("Speech synthesis canceled: {}".format(cancellation_details.reason))
             if cancellation_details.reason == speechsdk.CancellationReason.Error:
                 if cancellation_details.error_details:
-                    logging.info("Error details: {}".format(cancellation_details.error_details))
-                    logging.info("Did you set the speech resource key and region values?")
+                    logging.error("Error details: {}".format(cancellation_details.error_details))
+                    logging.error("Did you set the speech resource key and region values?")
 
         return speech_synthesis_result.audio_data
 
@@ -33,11 +33,11 @@ class TTS:
         audio_data_stream.save_to_wav_file(file_name)
 
         if speech_synthesis_result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
-            logging.info("Speech synthesized for text [{}]".format(text))
+            logging.debug("Speech synthesized for text [{}]".format(text))
         elif speech_synthesis_result.reason == speechsdk.ResultReason.Canceled:
             cancellation_details = speech_synthesis_result.cancellation_details
-            logging.info("Speech synthesis canceled: {}".format(cancellation_details.reason))
+            logging.debug("Speech synthesis canceled: {}".format(cancellation_details.reason))
             if cancellation_details.reason == speechsdk.CancellationReason.Error:
                 if cancellation_details.error_details:
-                    logging.info("Error details: {}".format(cancellation_details.error_details))
-                    logging.info("Did you set the speech resource key and region values?")
+                    logging.error("Error details: {}".format(cancellation_details.error_details))
+                    logging.error("Did you set the speech resource key and region values?")
