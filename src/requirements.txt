@@ -22,7 +22,7 @@ multidict==6.0.4
 openai==0.27.6
 OpenAIAuth==3.0.0
 prompt-toolkit==3.0.39
-protobuf==4.23.4
+protobuf==4.24.3
 Pygments==2.15.1
 PySocks==1.7.1
 python-dotenv==1.0.0
