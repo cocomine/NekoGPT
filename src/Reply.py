@@ -1,16 +1,16 @@
 import asyncio
-import io
 import logging
 import os
+import re
 import sqlite3
 
 import discord
-from anyio import open_file
 from discord import Color, Forbidden
 from discord.ext import commands
 from revChatGPT.V1 import AsyncChatbot
 
 import Mp3ToMp4
+from GenAudioBtn import GenAudioBtn
 from Prompt import Prompt
 from ReGenBtn import ReGenBtn
 from STT import STT
@@ -28,7 +28,6 @@ class Reply:
     # Generate reply
     async def reply(self, message: discord.Message, conversation: str, msg: discord.Message):
         ask = message.content
-        print(message)
         # check if message is voice message
         if ask == "" and message.attachments[0] is not None:
             attachments = message.attachments[0]
@@ -46,24 +45,31 @@ class Reply:
                 await msg.edit(content="<a:loading:1112646025090445354>", embed=embed)
 
         # reply
-        reply = await self.prompt.ask(conversation, msg, ask)
+        [reply, msg] = await self.prompt.ask(conversation, msg, ask)
 
         # convert reply to voice message
         if reply != "":
-            # add loading reaction
-            await msg.edit(content=reply + "\n > <a:loading:1112646025090445354> Generating voice message...")
+            # add Generating voice message button
+            btn = GenAudioBtn()
+            await msg.edit(view=btn)
+
+            # insert ',' after '喵~' or 'meow~'
+            p = re.compile(r"(meow|喵)~(?!！|。|，|？|!|,|\?|\.)")
+            speech_text = p.sub(r'\1~~ ,', reply)
+            print(speech_text)
 
             # convert text to voice message
-            await self.tts.text_to_speech_file(reply, f"voice-message_{conversation}.mp3")
+            await self.tts.text_to_speech_file(speech_text, f"voice-message_{conversation}.mp3")
+
             # convert voice message to mp4
             Mp3ToMp4.convert(f"voice-message_{conversation}.mp3", f"voice-message_{conversation}.mp4")
-
-            # remove loading reaction
-            await msg.edit(content=reply)
 
             # upload voice message to discord
             with open(f"voice-message_{conversation}.mp4", "rb") as file:
                 await msg.edit(attachments=[discord.File(file, filename=f"voice-message_{conversation}.mp4")])
+
+            # remove Generating voice message button
+            await msg.edit(view=None)
 
             # remove mp4
             os.remove(f"voice-message_{conversation}.mp4")
@@ -73,6 +79,8 @@ class Reply:
             # await msg.edit(attachments=[discord.File(io.BytesIO(voice), filename="voice-message.mp3")])
 
         await message.add_reaction("✅")  # add check mark
+
+        return msg # return message
 
     # DM
     async def dm(self, message: discord.Message):
@@ -109,7 +117,7 @@ class Reply:
                 cursor.execute("UPDATE DM SET replying = TRUE WHERE User = ?",
                                (message.author.id,))
                 self.db.commit()
-                await self.reply(message, conversation, msg)
+                msg = await self.reply(message, conversation, msg)
 
                 # add regenerate button
                 async def callback():
@@ -117,9 +125,11 @@ class Reply:
 
                 btn = ReGenBtn(callback)
                 await msg.edit(view=btn)
+            else:
+                await msg.edit(content="<a:loading:1112646025090445354> In progress on the previous reply, please try again later.")
 
         except Exception as e:
-            logging.debug(e)
+            logging.error(e)
             # add error reaction
             await message.add_reaction("❌")
             await message.channel.send("🔥 Oh no! Something went wrong. Please try again later.")
@@ -173,7 +183,7 @@ class Reply:
                     cursor.execute("UPDATE ReplyAt SET replying = TRUE WHERE Guild_ID = ? AND user = %s",
                                    (message.guild.id, message.author.id))
                     self.db.commit()
-                    await self.reply(message, conversation, msg)
+                    msg = await self.reply(message, conversation, msg)
 
                     # add regenerate button
                     async def callback():
@@ -183,7 +193,7 @@ class Reply:
                     await msg.edit(view=btn)
 
             except Exception as e:
-                logging.debug(e)
+                logging.error(e)
                 # add error reaction
                 await message.add_reaction("❌")
                 if isinstance(e, Forbidden):
@@ -202,7 +212,7 @@ class Reply:
                 await message.remove_reaction("<a:loading:1112646025090445354>", self.client.user)
 
         else:
-            await message.reply("🔥 Sorry, Thi server is not enabled **@mention** feature.")
+            await message.reply("🔥 Sorry, This server is not enabled **@mention** feature.")
 
     # channel message
     async def channel(self, message: discord.Message):
@@ -226,7 +236,7 @@ class Reply:
                 await message.add_reaction("<a:loading:1112646025090445354>")
                 msg = await message.reply("<a:loading:1112646025090445354>")
 
-                await self.reply(message, conversation, msg)
+                msg = await self.reply(message, conversation, msg)
 
                 # add regenerate button
                 async def callback():
@@ -236,7 +246,7 @@ class Reply:
                 await msg.edit(view=btn)
 
             except Exception as e:
-                logging.debug(e)
+                logging.error(e)
                 # add error reaction
                 await message.add_reaction("❌")
                 if isinstance(e, Forbidden):

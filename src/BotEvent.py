@@ -26,7 +26,7 @@ def set_event_lister(client: commands.Bot, db: sqlite3.Connection, chatbot: Asyn
             await client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching,
                                                                    name=f"@{bot_name} chat with me!"))
         except Exception as e:
-            logging.debug(e)
+            logging.error(e)
 
     # add into server
     @client.event

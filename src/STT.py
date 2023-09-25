@@ -37,7 +37,7 @@ class STT:
 
         # session_stopped callback
         def stop_cb(evt):
-            logging.info('CLOSING on {}'.format(evt))
+            logging.debug('CLOSING on {}'.format(evt))
             speech_recognizer.stop_continuous_recognition_async()
             nonlocal done
             done = True

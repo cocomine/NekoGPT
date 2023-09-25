@@ -7,5 +7,6 @@ version: 2
 updates:
   - package-ecosystem: "pip" # See documentation for possible values
     directory: "/src" # Location of package manifests
+    language: "python"
     schedule:
       interval: "weekly"
