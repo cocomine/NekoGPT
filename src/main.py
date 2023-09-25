@@ -16,7 +16,7 @@ from BotEvent import set_event_lister
 def start(bot_name="ChatGPT"):
     logging.basicConfig(level=logging.INFO)  # set logging level
     handler = logging.FileHandler(filename='../database/bot.log', encoding='utf-8', mode='w')  # create log file handler
-    logging.info(f"{bot_name} Discord Bot is starting... (v0.2.13)")
+    logging.info(f"{bot_name} Discord Bot is starting... (v0.2.14)")
 
     # create ChatGPT chatbot
     chatbot = AsyncChatbot(config={"access_token": os.getenv("CHATGPT_TOKEN")})

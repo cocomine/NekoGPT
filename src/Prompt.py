@@ -50,7 +50,11 @@ class Prompt:
                     tmp = x['message'][len(msg):]
 
                     if len(tmp) >= 10 or x['end_turn'] is True:
-                        msg += tmp
-                        await message.edit(content=msg)
+                        if (len(tmp) + len(msg)) > 2000:
+                            message = await message.reply(tmp)
+                            msg = tmp
+                        else:
+                            msg += tmp
+                            await message.edit(content=msg)
 
             return msg
