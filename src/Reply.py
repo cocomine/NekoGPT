@@ -80,6 +80,8 @@ class Reply:
 
         await message.add_reaction("✅")  # add check mark
 
+        return msg # return message
+
     # DM
     async def dm(self, message: discord.Message):
         cursor = self.db.cursor()
@@ -115,7 +117,7 @@ class Reply:
                 cursor.execute("UPDATE DM SET replying = TRUE WHERE User = ?",
                                (message.author.id,))
                 self.db.commit()
-                await self.reply(message, conversation, msg)
+                msg = await self.reply(message, conversation, msg)
 
                 # add regenerate button
                 async def callback():
@@ -181,7 +183,7 @@ class Reply:
                     cursor.execute("UPDATE ReplyAt SET replying = TRUE WHERE Guild_ID = ? AND user = %s",
                                    (message.guild.id, message.author.id))
                     self.db.commit()
-                    await self.reply(message, conversation, msg)
+                    msg = await self.reply(message, conversation, msg)
 
                     # add regenerate button
                     async def callback():
@@ -234,7 +236,7 @@ class Reply:
                 await message.add_reaction("<a:loading:1112646025090445354>")
                 msg = await message.reply("<a:loading:1112646025090445354>")
 
-                await self.reply(message, conversation, msg)
+                msg = await self.reply(message, conversation, msg)
 
                 # add regenerate button
                 async def callback():
