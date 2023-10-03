@@ -18,6 +18,10 @@ from TTS import TTS
 
 
 class Reply:
+    replying_dm = []
+    replying_mention = []
+    replying_channel = []
+
     def __init__(self, db: sqlite3.Connection, chatbot: AsyncChatbot, client: commands.Bot):
         self.db = db
         self.prompt = Prompt(chatbot)
@@ -45,7 +49,8 @@ class Reply:
                 await msg.edit(content="<a:loading:1112646025090445354>", embed=embed)
 
         # reply
-        [reply, msg] = await self.prompt.ask(conversation, msg, ask)
+        reply, message_obj_list = await self.prompt.ask(conversation, msg, ask)
+        msg = message_obj_list[len(message_obj_list) - 1]
 
         # convert reply to voice message
         if reply != "":
@@ -80,11 +85,22 @@ class Reply:
 
         await message.add_reaction("✅")  # add check mark
 
-        return msg # return message
+        return message_obj_list  # return message obj list
 
     # DM
     async def dm(self, message: discord.Message):
         cursor = self.db.cursor()
+
+        # check if bot is replying
+        try:
+            self.replying_dm.index(message.author.id)
+        except ValueError:
+            self.replying_dm.append(message.author.id)  # set is replying
+        else:
+            # is replying
+            await message.reply(
+                content="⛔ In progress on the previous reply, please wait for moment.")
+            return
 
         try:
             # add loading reaction
@@ -93,51 +109,39 @@ class Reply:
             msg = await message.reply("<a:loading:1112646025090445354>")
 
             # check if conversation is started?
-            cursor.execute("SELECT * FROM DM WHERE User = ?", (message.author.id,))
+            cursor.execute("SELECT conversation FROM DM WHERE User = ?", (message.author.id,))
             result = cursor.fetchone()
 
             # start conversation if not started
             if result is None:
-                conversation = await self.prompt.start_new_conversation(message.author.name)
+                conversation = await self.prompt.start_new_conversation()
                 cursor.execute("INSERT INTO DM (User, conversation) VALUES (?, ?)",
                                (message.author.id, conversation))
                 self.db.commit()
                 await asyncio.sleep(1)
             else:
-                conversation = result[1]
-
-            # check if bot is replying
-            cursor.execute("SELECT * FROM DM WHERE User = ? AND replying != TRUE",
-                           (message.author.id,))
-            result = cursor.fetchone()
+                conversation = result[0]
 
             # reply message
-            if result is not None:
-                # set is replying
-                cursor.execute("UPDATE DM SET replying = TRUE WHERE User = ?",
-                               (message.author.id,))
-                self.db.commit()
-                msg = await self.reply(message, conversation, msg)
+            message_obj_list = await self.reply(message, conversation, msg)
+            msg = message_obj_list[len(message_obj_list) - 1]
 
-                # add regenerate button
-                async def callback():
-                    await self.dm(message)
+            # add regenerate button
+            async def callback():
+                await self.dm(message)
 
-                btn = ReGenBtn(callback)
-                await msg.edit(view=btn)
-            else:
-                await msg.edit(content="<a:loading:1112646025090445354> In progress on the previous reply, please try again later.")
+            btn = ReGenBtn(callback, message_obj_list)
+            await msg.edit(view=btn)
 
         except Exception as e:
             logging.error(e)
             # add error reaction
             await message.add_reaction("❌")
-            await message.channel.send("🔥 Oh no! Something went wrong. Please try again later.")
+            await message.reply("🔥 Oh no! Something went wrong. Please try again later.")
 
         finally:
             # set is not replying
-            cursor.execute("UPDATE DM SET replying = FALSE WHERE User = ?", (message.author.id,))
-            self.db.commit()
+            self.replying_dm.remove(message.author.id)
 
             # remove loading reaction
             await message.remove_reaction("<a:loading:1112646025090445354>", self.client.user)
@@ -151,115 +155,118 @@ class Reply:
         cursor.execute("SELECT * FROM Guild WHERE Guild_ID = ? AND replyAt = TRUE", (message.guild.id,))
         result = cursor.fetchone()
 
-        if result is not None:
-            try:
-                # add loading reaction
-                await message.add_reaction("<a:loading:1112646025090445354>")
-                msg = await message.reply("<a:loading:1112646025090445354>")
-
-                # check if conversation is started?
-                cursor.execute("SELECT * FROM ReplyAt WHERE Guild_ID = %s AND user = ?",
-                               (message.guild.id, message.author.id))
-                result = cursor.fetchone()
-
-                # start conversation if not started
-                if result is None:
-                    conversation = await self.prompt.start_new_conversation()
-                    cursor.execute("INSERT INTO ReplyAt (Guild_ID, user, conversation) VALUES (?, ?, ?)",
-                                   (message.guild.id, message.author.id, conversation))
-                    self.db.commit()
-                    await asyncio.sleep(1)
-                else:
-                    conversation = result[2]
-
-                # check if bot is replying
-                cursor.execute("SELECT * FROM ReplyAt WHERE Guild_ID = ? AND user = ? AND replying != TRUE",
-                               (message.guild.id, message.author.id))
-                result = cursor.fetchone()
-
-                # reply message
-                if result is not None:
-                    # set is replying
-                    cursor.execute("UPDATE ReplyAt SET replying = TRUE WHERE Guild_ID = ? AND user = %s",
-                                   (message.guild.id, message.author.id))
-                    self.db.commit()
-                    msg = await self.reply(message, conversation, msg)
-
-                    # add regenerate button
-                    async def callback():
-                        await self.dm(message)
-
-                    btn = ReGenBtn(callback)
-                    await msg.edit(view=btn)
-
-            except Exception as e:
-                logging.error(e)
-                # add error reaction
-                await message.add_reaction("❌")
-                if isinstance(e, Forbidden):
-                    await message.channel.send("🔥 Sorry, I can't reply message in this channel. "
-                                               f"Please check my permission. Details: `{Forbidden}`")
-                else:
-                    await message.channel.send("🔥 Oh no! Something went wrong. Please try again later.")
-
-            finally:
-                # set is not replying
-                cursor.execute("UPDATE ReplyAt SET replying = FALSE WHERE Guild_ID = ? AND user = ?",
-                               (message.guild.id, message.author.id))
-                self.db.commit()
-
-                # remove loading reaction
-                await message.remove_reaction("<a:loading:1112646025090445354>", self.client.user)
-
-        else:
+        # is not enabled
+        if result is None:
             await message.reply("🔥 Sorry, This server is not enabled **@mention** feature.")
+            return
 
-    # channel message
-    async def channel(self, message: discord.Message):
-        cursor = self.db.cursor()
+        # check if bot is replying
+        try:
+            self.replying_mention.index(message.author.id)
+        except ValueError:
+            self.replying_mention.append(message.author.id)  # set is replying
+        else:
+            # is replying
+            await message.reply(
+                content="⛔ In progress on the previous reply, please wait for moment.")
+            return
 
-        cursor.execute("SELECT * FROM ReplyThis WHERE Guild_ID = ? AND channel_ID = ? AND replying != TRUE",
-                       (message.guild.id, message.channel.id))
-        result = cursor.fetchone()
+        try:
+            # add loading reaction
+            await message.add_reaction("<a:loading:1112646025090445354>")
+            msg = await message.reply("<a:loading:1112646025090445354>")
 
-        if result is not None:
-            # set is replying
-            cursor.execute("UPDATE ReplyThis SET replying = TRUE WHERE Guild_ID = ? AND channel_ID = ?",
-                           (message.guild.id, message.channel.id))
-            self.db.commit()
-            conversation = result[2]
+            # check if conversation is started?
+            cursor.execute("SELECT conversation FROM ReplyAt WHERE Guild_ID = ? AND user = ?",
+                           (message.guild.id, message.author.id))
+            result = cursor.fetchone()
+
+            # start conversation if not started
+            if result is None:
+                conversation = await self.prompt.start_new_conversation()
+                cursor.execute("INSERT INTO ReplyAt (Guild_ID, user, conversation) VALUES (?, ?, ?)",
+                               (message.guild.id, message.author.id, conversation))
+                self.db.commit()
+                await asyncio.sleep(1)
+            else:
+                conversation = result[0]
 
             # reply message
-            try:
-                # add loading reaction
-                await message.remove_reaction("✅", self.client.user)
-                await message.add_reaction("<a:loading:1112646025090445354>")
-                msg = await message.reply("<a:loading:1112646025090445354>")
+            message_obj_list = await self.reply(message, conversation, msg)
+            msg = message_obj_list[len(message_obj_list) - 1]
 
-                msg = await self.reply(message, conversation, msg)
+            # add regenerate button
+            async def callback():
+                await self.dm(message)
 
-                # add regenerate button
-                async def callback():
-                    await self.dm(message)
+            btn = ReGenBtn(callback, message_obj_list)
+            await msg.edit(view=btn)
 
-                btn = ReGenBtn(callback)
-                await msg.edit(view=btn)
+        except Exception as e:
+            logging.error(e)
 
-            except Exception as e:
-                logging.error(e)
-                # add error reaction
-                await message.add_reaction("❌")
-                if isinstance(e, Forbidden):
-                    await message.channel.send("🔥 Sorry, I can't reply message in this channel. "
-                                               f"Please check my permission. Details: `{Forbidden}`")
-                else:
-                    await message.channel.send("🔥 Oh no! Something went wrong. Please try again later.")
+            # add error reaction
+            await message.add_reaction("❌")
+            if isinstance(e, Forbidden):
+                await message.reply("🔥 Sorry, I can't reply message in this channel. "
+                                           f"Please check my permission. Details: `{Forbidden}`")
+            else:
+                await message.reply("🔥 Oh no! Something went wrong. Please try again later.")
 
-            finally:
-                # set is not replying
-                cursor.execute("UPDATE ReplyThis SET replying = FALSE WHERE Guild_ID = ? AND channel_ID = ?",
-                               (message.guild.id, message.channel.id))
-                self.db.commit()
+        finally:
+            # set is not replying
+            self.replying_mention.remove(message.author.id)
 
-                # remove loading reaction
-                await message.remove_reaction("<a:loading:1112646025090445354>", self.client.user)
+            # remove loading reaction
+            await message.remove_reaction("<a:loading:1112646025090445354>", self.client.user)
+
+
+# channel message
+async def channel(self, message: discord.Message):
+    cursor = self.db.cursor()
+
+    cursor.execute("SELECT * FROM ReplyThis WHERE Guild_ID = ? AND channel_ID = ? AND replying != TRUE",
+                   (message.guild.id, message.channel.id))
+    result = cursor.fetchone()
+
+    if result is not None:
+        # set is replying
+        cursor.execute("UPDATE ReplyThis SET replying = TRUE WHERE Guild_ID = ? AND channel_ID = ?",
+                       (message.guild.id, message.channel.id))
+        self.db.commit()
+        conversation = result[2]
+
+        # reply message
+        try:
+            # add loading reaction
+            await message.remove_reaction("✅", self.client.user)
+            await message.add_reaction("<a:loading:1112646025090445354>")
+            msg = await message.reply("<a:loading:1112646025090445354>")
+
+            msg = await self.reply(message, conversation, msg)
+
+            # add regenerate button
+            async def callback():
+                await self.dm(message)
+
+            btn = ReGenBtn(callback)
+            await msg.edit(view=btn)
+
+        except Exception as e:
+            logging.error(e)
+            # add error reaction
+            await message.add_reaction("❌")
+            if isinstance(e, Forbidden):
+                await message.channel.send("🔥 Sorry, I can't reply message in this channel. "
+                                           f"Please check my permission. Details: `{Forbidden}`")
+            else:
+                await message.channel.send("🔥 Oh no! Something went wrong. Please try again later.")
+
+        finally:
+            # set is not replying
+            cursor.execute("UPDATE ReplyThis SET replying = FALSE WHERE Guild_ID = ? AND channel_ID = ?",
+                           (message.guild.id, message.channel.id))
+            self.db.commit()
+
+            # remove loading reaction
+            await message.remove_reaction("<a:loading:1112646025090445354>", self.client.user)

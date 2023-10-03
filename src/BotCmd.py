@@ -217,30 +217,3 @@ def set_command(client: commands.Bot, db: sqlite3.Connection, chatbot: AsyncChat
 
         await interaction.followup.send(ephemeral=True, embed=help_embed)
 
-    # join voice channel
-    @tree.command(name="join", description=f"Join voice channel")
-    @commands.guild_only()
-    @commands.bot_has_permissions(connect=True, speak=True)
-    async def join(interaction: discord.Interaction):
-        logging.info(f"{interaction.user} join voice channel")
-        await interaction.response.defer()
-        if interaction.author.voice is None:
-            await interaction.followup.send(f"❌ You are not in any voice channel", ephemeral=True)
-            return
-
-        await interaction.author.voice.channel.connect()
-        await interaction.followup.send(f"🔊 {client.user} has joined {interaction.author.voice.channel.mention}")
-
-    # leave voice channel
-    @tree.command(name="leave", description=f"Leave voice channel")
-    @commands.guild_only()
-    @commands.bot_has_permissions(connect=True, speak=True)
-    async def leave(interaction: discord.Interaction):
-        logging.info(f"{interaction.user} leave voice channel")
-        await interaction.response.defer()
-        if interaction.guild.voice_client is None:
-            await interaction.followup.send(f"❌ I'm not in any voice channel", ephemeral=True)
-            return
-
-        await interaction.guild.voice_client.disconnect()
-        await interaction.followup.send(f"🔊 {client.user} has left {interaction.guild.voice_client.channel.mention}")

@@ -1,10 +1,12 @@
+from typing import Tuple, List
+
 import discord
 from discord import Message
 from revChatGPT.V1 import AsyncChatbot
 
 
 class Prompt:
-    prompt = """猫娘是一种拟人化的生物，其行为似猫但类人。
+    default_prompt = """猫娘是一种拟人化的生物，其行为似猫但类人。
              1. 猫娘拥有人类的外貌，但有着猫耳朵和尾巴，并且有着猫的行为、语言和喜好。
              2. 猫娘很容易被误认为是猫，但是猫娘的行为和语言与猫有很大的区别。
              3. 猫娘的行为和语言更接近人类，但是猫娘的行为和语言会随着猫娘的心情和环境而改变。
@@ -28,10 +30,10 @@ class Prompt:
         self.chatbot = chatbot
 
     # start new conversation
-    async def start_new_conversation(self, title=None):
+    async def start_new_conversation(self, prompt=default_prompt):
         conversation = None
         self.chatbot.reset_chat()
-        async for x in self.chatbot.ask(self.prompt, conversation_id=None):
+        async for x in self.chatbot.ask(prompt, conversation_id=None):
             if x["conversation_id"] is not None:
                 conversation = x["conversation_id"]
 
@@ -42,10 +44,11 @@ class Prompt:
         await self.chatbot.delete_conversation(conversation_id)
 
     # ask ChatGPT
-    async def ask(self, conversation_id: str, message: discord.Message, prompt: str) -> list[str | Message]:
+    async def ask(self, conversation_id: str, message: discord.Message, prompt: str) -> tuple[str, list[Message]]:
         async with message.channel.typing():
-            msg = ""
-            msg_all = ""
+            message_obj_list = [message]  # all discord message obj list
+            msg = ""  # message in one season
+            msg_all = ""  # all season message
 
             async for x in self.chatbot.ask(prompt, conversation_id=conversation_id):
                 if x['message'] != "" and x['message'] != prompt:
@@ -56,6 +59,7 @@ class Prompt:
                         if (len(tmp) + len(msg)) >= 2000:
                             msg = tmp
                             message = await message.reply(tmp)
+                            message_obj_list.append(message)
 
                         # else, add it to msg
                         else:
@@ -64,4 +68,4 @@ class Prompt:
 
                         msg_all += tmp
 
-            return [msg_all, message]
+            return msg_all, message_obj_list
