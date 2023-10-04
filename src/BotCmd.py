@@ -1,23 +1,20 @@
 import asyncio
 import logging
-import sqlite3
 
 import discord
-import redis
 from discord import Color, Embed
 from discord.ext import commands
 
+import share_var
 from Prompt import Prompt
-
-global CHATBOT_CONN, SQL_CONN, REDIS_CONN  # global connection
 
 
 # set command listener
 def set_command(client: commands.Bot, bot_name: str):
     tree = client.tree
-    r: redis.Redis = REDIS_CONN
-    db: sqlite3.Connection = SQL_CONN
-    prompt = Prompt(CHATBOT_CONN)
+    r = share_var.redis_conn
+    db = share_var.sql_conn
+    prompt = Prompt(share_var.chatbot_conn)
 
     # ping command
     @tree.command(name="ping", description="Check bot latency")
@@ -155,10 +152,10 @@ def set_command(client: commands.Bot, bot_name: str):
             conversation = await prompt.start_new_conversation()
             cursor.execute("UPDATE ReplyThis SET conversation = ? WHERE Guild_ID = ? AND channel_ID = ?",
                            (conversation, interaction.guild.id, row[1],))
-            db.commit()
 
             await followup.edit(
                 content=f"<a:loading:1112646025090445354> {client.user} resting channel conversation ({i + 1}/{len(result)})")
+        db.commit()
 
         # Stop ReplyAt conversation
         cursor.execute("SELECT conversation FROM ReplyAt WHERE Guild_ID = ?", (interaction.guild.id,))
