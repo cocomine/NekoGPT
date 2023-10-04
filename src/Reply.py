@@ -30,7 +30,7 @@ class Reply:
         self.tts = TTS(os.environ["SPEECH_KEY"], os.environ["SPEECH_REGION"])
 
     # Generate reply
-    async def reply(self, message: discord.Message, conversation: str, msg: discord.Message):
+    async def reply(self, message: discord.Message, conversation: str, msg: discord.Message) -> list[discord.Message]:
         ask = message.content
         # check if message is voice message
         if ask == "" and message.attachments[0] is not None:
@@ -220,53 +220,61 @@ class Reply:
             # remove loading reaction
             await message.remove_reaction("<a:loading:1112646025090445354>", self.client.user)
 
+    # channel message
+    async def channel(self, message: discord.Message):
+        cursor = self.db.cursor()
 
-# channel message
-async def channel(self, message: discord.Message):
-    cursor = self.db.cursor()
-
-    cursor.execute("SELECT * FROM ReplyThis WHERE Guild_ID = ? AND channel_ID = ? AND replying != TRUE",
-                   (message.guild.id, message.channel.id))
-    result = cursor.fetchone()
-
-    if result is not None:
-        # set is replying
-        cursor.execute("UPDATE ReplyThis SET replying = TRUE WHERE Guild_ID = ? AND channel_ID = ?",
+        # get conversation
+        cursor.execute("SELECT conversation FROM ReplyThis WHERE Guild_ID = ? AND channel_ID = ?",
                        (message.guild.id, message.channel.id))
-        self.db.commit()
-        conversation = result[2]
+        result = cursor.fetchone()
 
-        # reply message
-        try:
-            # add loading reaction
-            await message.remove_reaction("✅", self.client.user)
-            await message.add_reaction("<a:loading:1112646025090445354>")
-            msg = await message.reply("<a:loading:1112646025090445354>")
-
-            msg = await self.reply(message, conversation, msg)
-
-            # add regenerate button
-            async def callback():
-                await self.dm(message)
-
-            btn = ReGenBtn(callback)
-            await msg.edit(view=btn)
-
-        except Exception as e:
-            logging.error(e)
-            # add error reaction
-            await message.add_reaction("❌")
-            if isinstance(e, Forbidden):
-                await message.channel.send("🔥 Sorry, I can't reply message in this channel. "
-                                           f"Please check my permission. Details: `{Forbidden}`")
+        # check have conversation
+        if result is not None:
+            # check if bot is replying
+            try:
+                self.replying_channel.index((message.guild.id, message.channel.id))
+            except ValueError:
+                self.replying_channel.append((message.guild.id, message.channel.id))  # set is replying
             else:
-                await message.channel.send("🔥 Oh no! Something went wrong. Please try again later.")
+                # is replying
+                await message.reply(
+                    content="⛔ In progress on the previous reply, please wait for moment.")
+                return
 
-        finally:
-            # set is not replying
-            cursor.execute("UPDATE ReplyThis SET replying = FALSE WHERE Guild_ID = ? AND channel_ID = ?",
-                           (message.guild.id, message.channel.id))
-            self.db.commit()
+            try:
+                conversation = result[0]
 
-            # remove loading reaction
-            await message.remove_reaction("<a:loading:1112646025090445354>", self.client.user)
+                # add loading reaction
+                await message.remove_reaction("✅", self.client.user)
+                await message.add_reaction("<a:loading:1112646025090445354>")
+                msg = await message.reply("<a:loading:1112646025090445354>")
+
+                # reply message
+                message_obj_list = await self.reply(message, conversation, msg)
+                msg = message_obj_list[len(message_obj_list) - 1]
+
+                # add regenerate button
+                async def callback():
+                    await self.dm(message)
+
+                btn = ReGenBtn(callback, message_obj_list)
+                await msg.edit(view=btn)
+
+            except Exception as e:
+                logging.error(e)
+
+                # add error reaction
+                await message.add_reaction("❌")
+                if isinstance(e, Forbidden):
+                    await message.channel.send("🔥 Sorry, I can't reply message in this channel. "
+                                               f"Please check my permission. Details: `{Forbidden}`")
+                else:
+                    await message.channel.send("🔥 Oh no! Something went wrong. Please try again later.")
+
+            finally:
+                # set is not replying
+                self.replying_channel.remove((message.guild.id, message.channel.id))
+
+                # remove loading reaction
+                await message.remove_reaction("<a:loading:1112646025090445354>", self.client.user)

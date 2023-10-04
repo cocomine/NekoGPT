@@ -33,7 +33,7 @@ def set_command(client: commands.Bot, db: sqlite3.Connection, chatbot: AsyncChat
         await interaction.response.defer(ephemeral=True)
 
         cursor = db.cursor()
-        cursor.execute("SELECT * FROM ReplyThis WHERE Guild_ID = ? AND channel_ID = ?",
+        cursor.execute("SELECT conversation FROM ReplyThis WHERE Guild_ID = ? AND channel_ID = ?",
                        (interaction.guild.id, interaction.channel.id,))
         result = cursor.fetchone()
 
@@ -51,8 +51,11 @@ def set_command(client: commands.Bot, db: sqlite3.Connection, chatbot: AsyncChat
 
         else:
             # stop conversation
-            if result[2] is not None:
-                await prompt.stop_conversation(result[2])
+            if result[0] is not None:
+                try:
+                    await prompt.stop_conversation(result[0])
+                except Exception as e:
+                    logging.warning(e)
 
             # remove from database
             cursor.execute("DELETE FROM ReplyThis WHERE Guild_ID = ? AND channel_ID = ?",
@@ -81,15 +84,17 @@ def set_command(client: commands.Bot, db: sqlite3.Connection, chatbot: AsyncChat
                                             f"Each user will have its own conversation.")
         else:
             # stop conversation
-            cursor.execute("SELECT * FROM ReplyAt WHERE Guild_ID = ?", (interaction.guild.id,))
+            cursor.execute("SELECT conversation FROM ReplyAt WHERE Guild_ID = ?", (interaction.guild.id,))
             result = cursor.fetchall()
             for row in result:
                 if row[2] is not None:
-                    await prompt.stop_conversation(row[2])
+                    try:
+                        await prompt.stop_conversation(row[0])
+                    except Exception as e:
+                        logging.warning(e)
 
             # remove from database
             cursor.execute("DELETE FROM ReplyAt WHERE Guild_ID = ?", (interaction.guild.id,))
-            db.commit()
             cursor.execute("UPDATE Guild SET replyAt = FALSE WHERE Guild_ID = ?", (interaction.guild.id,))
             db.commit()
 
@@ -124,29 +129,56 @@ def set_command(client: commands.Bot, db: sqlite3.Connection, chatbot: AsyncChat
         await interaction.response.defer(ephemeral=True)
         cursor = db.cursor()
 
-        # stop all conversation
-        cursor.execute("SELECT * FROM ReplyThis WHERE Guild_ID = ?", (interaction.guild.id,))
+        # Restart ReplyThis conversation
+        cursor.execute("SELECT conversation, channel_ID FROM ReplyThis WHERE Guild_ID = ?", (interaction.guild.id,))
         result = cursor.fetchall()
-        for row in result:
-            if row[2] is not None:
-                await prompt.stop_conversation(row[2])
 
+        # send process message
+        followup = await interaction.followup.send(
+            f"<a:loading:1112646025090445354> {client.user} resting channel conversation (0/{len(result)})", ephemeral=True)
+
+        for i in range(len(result)):
+            row = result[i]
+            if row[0] is not None:
+                try:
+                    await prompt.stop_conversation(row[0])
+                except Exception as e:
+                    logging.warning(e)
+
+            # start new conversation
             conversation = await prompt.start_new_conversation()
-            cursor.execute("UPDATE ReplyThis SET conversation = ? WHERE Guild_ID = ?",
-                           (conversation, interaction.guild.id,))
+            cursor.execute("UPDATE ReplyThis SET conversation = ? WHERE Guild_ID = ? AND channel_ID = ?",
+                           (conversation, interaction.guild.id, row[1],))
             db.commit()
 
-        cursor.execute("SELECT * FROM ReplyAt WHERE Guild_ID = ?", (interaction.guild.id,))
-        result = cursor.fetchall()
-        for row in result:
-            if row[2] is not None:
-                await prompt.stop_conversation(row[2])
+            await followup.edit(
+                content=f"<a:loading:1112646025090445354> {client.user} resting channel conversation ({i + 1}/{len(result)})")
 
+
+        # Stop ReplyAt conversation
+        cursor.execute("SELECT conversation FROM ReplyAt WHERE Guild_ID = ?", (interaction.guild.id,))
+        result = cursor.fetchall()
+
+        # send process message
+        await followup.edit(
+            content=f"<a:loading:1112646025090445354> {client.user} stopping mention conversation (0/{len(result)})")
+
+        for i in range(len(result)):
+            row = result[i]
+            if row[0] is not None:
+                try:
+                    await prompt.stop_conversation(row[0])
+                except Exception as e:
+                    logging.warning(e)
+
+            await followup.edit(
+                content=f"<a:loading:1112646025090445354> {client.user} stopping mention conversation ({i + 1}/{len(result)})")
+
+        # delete conversation
         cursor.execute("DELETE FROM ReplyAt WHERE Guild_ID = ?", (interaction.guild.id,))
         db.commit()
 
-        await interaction.followup.send(f"🔄 {client.user} has reset all conversation in this server",
-                                        ephemeral=True)
+        await followup.edit(content=f"🔄 {client.user} has reset all conversation in this server.")
 
     # reset DM conversation
     @tree.command(name="reset-dm", description=f"Reset conversation in DM")
@@ -205,15 +237,22 @@ def set_command(client: commands.Bot, db: sqlite3.Connection, chatbot: AsyncChat
         help_embed = Embed(title=f"{client.user} | Help menu", color=Color.yellow())
         help_embed.set_author(icon_url=client.user.avatar.url, name=client.user)
         help_embed.add_field(name="</help:1114586386465574912>", value=f"Show {client.user} help menu", inline=False)
-        help_embed.add_field(name="</dm-chat:1112076933291835443>", value=f"Start DM chat with {client.user}", inline=False)
-        help_embed.add_field(name="</reply-this:1112069656178610266>", value=f"Set {client.user} reply all message in {interaction.channel.mention} *(Administrator only)*", inline=False)
-        help_embed.add_field(name="</reply-at:1112076933291835442>", value=f"Set {client.user} reply @mention message in this server *(Administrator only)*", inline=False)
-        help_embed.add_field(name="</reset:1112663618811600916>", value=f"Reset {client.user} all conversation in this server *(Administrator only)*", inline=False)
-        help_embed.add_field(name="</reset-dm:1112775422862700615>", value=f"Reset {client.user} DM conversation *(DM only)*", inline=False)
+        help_embed.add_field(name="</dm-chat:1112076933291835443>", value=f"Start DM chat with {client.user}",
+                             inline=False)
+        help_embed.add_field(name="</reply-this:1112069656178610266>",
+                             value=f"Set {client.user} reply all message in {interaction.channel.mention} *(Administrator only)*",
+                             inline=False)
+        help_embed.add_field(name="</reply-at:1112076933291835442>",
+                             value=f"Set {client.user} reply @mention message in this server *(Administrator only)*",
+                             inline=False)
+        help_embed.add_field(name="</reset:1112663618811600916>",
+                             value=f"Reset {client.user} all conversation in this server *(Administrator only)*",
+                             inline=False)
+        help_embed.add_field(name="</reset-dm:1112775422862700615>",
+                             value=f"Reset {client.user} DM conversation *(DM only)*", inline=False)
         help_embed.add_field(name="", value="", inline=False)
         help_embed.add_field(name="Current Settings", value="The server's current settings", inline=False)
         help_embed.add_field(name="reply-this", value=_reply_this, inline=True)
         help_embed.add_field(name="reply-at", value=_reply_at, inline=True)
 
         await interaction.followup.send(ephemeral=True, embed=help_embed)
-
