@@ -3,16 +3,21 @@ import logging
 import sqlite3
 
 import discord
+import redis
 from discord import Color, Embed
 from discord.ext import commands
-from revChatGPT.V1 import AsyncChatbot
 
 from Prompt import Prompt
 
+global CHATBOT_CONN, SQL_CONN, REDIS_CONN  # global connection
 
-def set_command(client: commands.Bot, db: sqlite3.Connection, chatbot: AsyncChatbot, bot_name: str):
+
+# set command listener
+def set_command(client: commands.Bot, bot_name: str):
     tree = client.tree
-    prompt = Prompt(chatbot)
+    r: redis.Redis = REDIS_CONN
+    db: sqlite3.Connection = SQL_CONN
+    prompt = Prompt(CHATBOT_CONN)
 
     # ping command
     @tree.command(name="ping", description="Check bot latency")
@@ -135,7 +140,8 @@ def set_command(client: commands.Bot, db: sqlite3.Connection, chatbot: AsyncChat
 
         # send process message
         followup = await interaction.followup.send(
-            f"<a:loading:1112646025090445354> {client.user} resting channel conversation (0/{len(result)})", ephemeral=True)
+            f"<a:loading:1112646025090445354> {client.user} resting channel conversation (0/{len(result)})",
+            ephemeral=True)
 
         for i in range(len(result)):
             row = result[i]
@@ -153,7 +159,6 @@ def set_command(client: commands.Bot, db: sqlite3.Connection, chatbot: AsyncChat
 
             await followup.edit(
                 content=f"<a:loading:1112646025090445354> {client.user} resting channel conversation ({i + 1}/{len(result)})")
-
 
         # Stop ReplyAt conversation
         cursor.execute("SELECT conversation FROM ReplyAt WHERE Guild_ID = ?", (interaction.guild.id,))

@@ -2,16 +2,21 @@ import logging
 import sqlite3
 
 import discord
+import redis
 from discord.ext import commands
-from revChatGPT.V1 import AsyncChatbot
 
 from Prompt import Prompt
 from Reply import Reply
 
+global CHATBOT_CONN, SQL_CONN, REDIS_CONN  # global connection
 
-def set_event_lister(client: commands.Bot, db: sqlite3.Connection, chatbot: AsyncChatbot, bot_name: str):
-    prompt = Prompt(chatbot)
-    reply = Reply(db, chatbot, client)
+
+# set event listener
+def set_event_lister(client: commands.Bot, bot_name: str):
+    db: sqlite3.Connection = SQL_CONN
+    r: redis.Redis = REDIS_CONN
+    prompt = Prompt(CHATBOT_CONN)
+    reply = Reply(db, CHATBOT_CONN, client)
 
     @client.event
     async def setup_hook():
