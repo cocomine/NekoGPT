@@ -8,6 +8,7 @@ class TTS:
     def __init__(self, speech_key: str, speech_region: str):
         speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=speech_region)
         speech_config.set_speech_synthesis_output_format(speechsdk.SpeechSynthesisOutputFormat.Audio24Khz48KBitRateMonoMp3)
+        speech_config.set_property(speechsdk.PropertyId.Speech_LogFilename, "log.txt")  #debug
         speech_config.speech_synthesis_voice_name = 'zh-CN-XiaoyiNeural'
         self.speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=None)
 

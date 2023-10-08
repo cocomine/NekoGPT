@@ -2,14 +2,13 @@ import asyncio
 import logging
 import os
 import re
-import sqlite3
 
 import discord
 from discord import Color, Forbidden
 from discord.ext import commands
-from revChatGPT.V1 import AsyncChatbot
 
 import Mp3ToMp4
+import share_var
 from GenAudioBtn import GenAudioBtn
 from Prompt import Prompt
 from ReGenBtn import ReGenBtn
@@ -22,9 +21,10 @@ class Reply:
     replying_mention = []
     replying_channel = []
 
-    def __init__(self, db: sqlite3.Connection, chatbot: AsyncChatbot, client: commands.Bot):
-        self.db = db
-        self.prompt = Prompt(chatbot)
+    def __init__(self, client: commands.Bot):
+        self.r = share_var.redis_conn
+        self.db = share_var.sql_conn
+        self.prompt = Prompt(share_var.chatbot_conn)
         self.client = client
         self.stt = STT(os.environ["SPEECH_KEY"], os.environ["SPEECH_REGION"])
         self.tts = TTS(os.environ["SPEECH_KEY"], os.environ["SPEECH_REGION"])
@@ -59,9 +59,11 @@ class Reply:
             await msg.edit(view=btn)
 
             # insert ',' after '喵~' or 'meow~'
-            p = re.compile(r"(meow|喵)~(?!！|。|，|？|!|,|\?|\.)")
-            speech_text = p.sub(r'\1~~ ,', reply)
-            print(speech_text)
+            p = re.compile(r"(喵)~(?!！|。|，|？|!|,|\?|\.)")
+            speech_text = p.sub(r'\1~，', reply)
+
+            p = re.compile(r"(meow)~(?!！|。|，|？|!|,|\?|\.)")
+            speech_text = p.sub(r'\1~,', speech_text)
 
             # convert text to voice message
             await self.tts.text_to_speech_file(speech_text, f"voice-message_{conversation}.mp3")
@@ -109,18 +111,22 @@ class Reply:
             msg = await message.reply("<a:loading:1112646025090445354>")
 
             # check if conversation is started?
-            cursor.execute("SELECT conversation FROM DM WHERE User = ?", (message.author.id,))
-            result = cursor.fetchone()
+            conversation = await self.r.hget("DM", str(message.author.id))
+            if conversation is None:
+                cursor.execute("SELECT conversation FROM DM WHERE User = ?", (message.author.id,))
+                result = cursor.fetchone()
 
-            # start conversation if not started
-            if result is None:
-                conversation = await self.prompt.start_new_conversation()
-                cursor.execute("INSERT INTO DM (User, conversation) VALUES (?, ?)",
-                               (message.author.id, conversation))
-                self.db.commit()
-                await asyncio.sleep(1)
-            else:
-                conversation = result[0]
+                # start conversation if not started
+                if result is None:
+                    conversation = await self.prompt.start_new_conversation()
+                    cursor.execute("INSERT INTO DM (User, conversation) VALUES (?, ?)",
+                                   (message.author.id, conversation))
+                    self.db.commit()
+                    await asyncio.sleep(1)
+                else:
+                    conversation = result[0]
+
+                await self.r.hset("DM", str(message.author.id), conversation)  # add into redis
 
             # reply message
             message_obj_list = await self.reply(message, conversation, msg)
@@ -151,13 +157,15 @@ class Reply:
         cursor = self.db.cursor()
 
         # check replyAt is enabled
-        await message.remove_reaction("✅", self.client.user)
-        cursor.execute("SELECT * FROM Guild WHERE Guild_ID = ? AND replyAt = TRUE", (message.guild.id,))
-        result = cursor.fetchone()
+        result = await (self.r.hget("Guild.replyAt", str(message.guild.id)))
+        if result is None:
+            cursor.execute("SELECT * FROM Guild WHERE Guild_ID = ? AND replyAt = TRUE", (message.guild.id,))
+            result = cursor.fetchone()
+            await self.r.hset("Guild.replyAt", str(message.guild.id), ("0" if result is None else "1"))
 
         # is not enabled
-        if result is None:
-            await message.reply("🔥 Sorry, This server is not enabled **@mention** feature.")
+        if result is None or result == "0":
+            await message.reply("🚫 Sorry, This server is not enabled **@mention** feature.")
             return
 
         # check if bot is replying
@@ -177,19 +185,24 @@ class Reply:
             msg = await message.reply("<a:loading:1112646025090445354>")
 
             # check if conversation is started?
-            cursor.execute("SELECT conversation FROM ReplyAt WHERE Guild_ID = ? AND user = ?",
-                           (message.guild.id, message.author.id))
-            result = cursor.fetchone()
+            conversation = await self.r.hget("ReplyAt", f"{message.guild.id}.{message.author.id}")
+            logging.info(conversation)
+            if conversation is None:
+                cursor.execute("SELECT conversation FROM ReplyAt WHERE Guild_ID = ? AND user = ?",
+                               (message.guild.id, message.author.id))
+                result = cursor.fetchone()
 
-            # start conversation if not started
-            if result is None:
-                conversation = await self.prompt.start_new_conversation()
-                cursor.execute("INSERT INTO ReplyAt (Guild_ID, user, conversation) VALUES (?, ?, ?)",
-                               (message.guild.id, message.author.id, conversation))
-                self.db.commit()
-                await asyncio.sleep(1)
-            else:
-                conversation = result[0]
+                # start conversation if not started
+                if result is None:
+                    conversation = await self.prompt.start_new_conversation()
+                    cursor.execute("INSERT INTO ReplyAt (Guild_ID, user, conversation) VALUES (?, ?, ?)",
+                                   (message.guild.id, message.author.id, conversation))
+                    self.db.commit()
+                    await asyncio.sleep(1)
+                else:
+                    conversation = result[0]
+
+                await self.r.hset("ReplyAt", f"{message.guild.id}.{message.author.id}", conversation)  # add into redis
 
             # reply message
             message_obj_list = await self.reply(message, conversation, msg)
@@ -209,7 +222,7 @@ class Reply:
             await message.add_reaction("❌")
             if isinstance(e, Forbidden):
                 await message.reply("🔥 Sorry, I can't reply message in this channel. "
-                                           f"Please check my permission. Details: `{Forbidden}`")
+                                    f"Please check my permission. Details: `{Forbidden}`")
             else:
                 await message.reply("🔥 Oh no! Something went wrong. Please try again later.")
 
@@ -225,12 +238,17 @@ class Reply:
         cursor = self.db.cursor()
 
         # get conversation
-        cursor.execute("SELECT conversation FROM ReplyThis WHERE Guild_ID = ? AND channel_ID = ?",
+        conversation = await self.r.hget("ReplyThis", f"{message.guild.id}.{message.channel.id}")
+        if conversation is None:
+            cursor.execute("SELECT conversation FROM ReplyThis WHERE Guild_ID = ? AND channel_ID = ?",
                        (message.guild.id, message.channel.id))
-        result = cursor.fetchone()
+            result = cursor.fetchone()
+            conversation = result[0]
+            if conversation is not None:
+                await self.r.hset("ReplyThis", f"{message.guild.id}.{message.channel.id}", conversation)
 
         # check have conversation
-        if result is not None:
+        if conversation is not None:
             # check if bot is replying
             try:
                 self.replying_channel.index((message.guild.id, message.channel.id))
@@ -243,8 +261,6 @@ class Reply:
                 return
 
             try:
-                conversation = result[0]
-
                 # add loading reaction
                 await message.remove_reaction("✅", self.client.user)
                 await message.add_reaction("<a:loading:1112646025090445354>")
@@ -267,7 +283,7 @@ class Reply:
                 # add error reaction
                 await message.add_reaction("❌")
                 if isinstance(e, Forbidden):
-                    await message.channel.send("🔥 Sorry, I can't reply message in this channel. "
+                    await message.channel.send("🚫 Sorry, I can't reply message in this channel. "
                                                f"Please check my permission. Details: `{Forbidden}`")
                 else:
                     await message.channel.send("🔥 Oh no! Something went wrong. Please try again later.")

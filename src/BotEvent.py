@@ -13,11 +13,12 @@ def set_event_lister(client: commands.Bot, bot_name: str):
     db = share_var.sql_conn
     r = share_var.redis_conn
     prompt = Prompt(share_var.chatbot_conn)
-    reply = Reply(db, share_var.chatbot_conn, client)
+    reply = Reply(client)
 
     @client.event
     async def setup_hook():
-        pass
+        await r.flushdb()
+        logging.info(f"{bot_name} Redis cache is cleared.")
 
     @client.event
     async def on_ready():
@@ -37,6 +38,7 @@ def set_event_lister(client: commands.Bot, bot_name: str):
 
         # add into database
         cursor = db.cursor()
+        await r.hset("Guild.replyAt", str(guild.id), "1")
         cursor.execute("INSERT INTO Guild (Guild_ID) VALUES (?)", (guild.id,))
         db.commit()
 
@@ -47,19 +49,29 @@ def set_event_lister(client: commands.Bot, bot_name: str):
         cursor = db.cursor()
 
         # stop all conversation
-        cursor.execute("SELECT * FROM ReplyThis WHERE Guild_ID = ?", (guild.id,))
+        cursor.execute("SELECT conversation, channel_ID FROM ReplyThis WHERE Guild_ID = ?", (guild.id,))
         result = cursor.fetchall()
         for row in result:
-            if row[2] is not None:
-                await prompt.stop_conversation(row[2])
+            if row[0] is not None:
+                try:
+                    await r.hdel("ReplyThis", f"{guild.id}.{row[1]}")  # set into redis
+                    await prompt.stop_conversation(row[0])
+                except Exception as e:
+                    logging.warning(e)
 
-        cursor.execute("SELECT * FROM ReplyAt WHERE Guild_ID = ?", (guild.id,))
+        # stop @mention conversation
+        cursor.execute("SELECT conversation, user FROM ReplyAt WHERE Guild_ID = ?", (guild.id,))
         result = cursor.fetchall()
         for row in result:
-            if row[2] is not None:
-                await prompt.stop_conversation(row[2])
+            if row[0] is not None:
+                try:
+                    await r.hdel("ReplyAt", f"{guild.id}.{row[1]}")  # remove from redis
+                    await prompt.stop_conversation(row[0])
+                except Exception as e:
+                    logging.warning(e)
 
         # remove from database
+        await r.hdel("Guild.replyAt", str(guild.id))  # remove from redis
         cursor.execute("DELETE FROM Guild WHERE Guild_ID = ?", (guild.id,))
         db.commit()
 

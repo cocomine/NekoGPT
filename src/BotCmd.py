@@ -41,11 +41,13 @@ def set_command(client: commands.Bot, bot_name: str):
 
         if result is None:
             # start conversation
-            conversation = await prompt.start_new_conversation(interaction.channel.name)
-            await asyncio.sleep(3)
+            conversation = await prompt.start_new_conversation()
+            await asyncio.sleep(1)
 
             # add into database
-            cursor.execute("INSERT INTO ReplyThis VALUES (?, ?, ?, FALSE)",
+            await r.hset("ReplyThis", f"{interaction.guild.id}.{interaction.channel.id}",
+                         conversation)  # set into redis
+            cursor.execute("INSERT INTO ReplyThis VALUES (?, ?, ?)",
                            (interaction.guild.id, interaction.channel.id, conversation))
             db.commit()
             await interaction.followup.send(f"🟢 {client.user} will reply all message in this channel. "
@@ -60,6 +62,7 @@ def set_command(client: commands.Bot, bot_name: str):
                     logging.warning(e)
 
             # remove from database
+            await r.hdel("ReplyThis", f"{interaction.guild.id}.{interaction.channel.id}")  # remove from redis
             cursor.execute("DELETE FROM ReplyThis WHERE Guild_ID = ? AND channel_ID = ?",
                            (interaction.guild.id, interaction.channel.id))
             db.commit()
@@ -82,25 +85,38 @@ def set_command(client: commands.Bot, bot_name: str):
         if result is None:
             cursor.execute("UPDATE Guild SET replyAt = TRUE WHERE Guild_ID = ?", (interaction.guild.id,))
             db.commit()
+            await r.hset("Guild.replyAt", str(interaction.guild.id), "1")  # set into redis
             await interaction.followup.send(f"🟢 {client.user} will reply <@{client.user.id}> message. "
                                             f"Each user will have its own conversation.")
         else:
             # stop conversation
-            cursor.execute("SELECT conversation FROM ReplyAt WHERE Guild_ID = ?", (interaction.guild.id,))
+            cursor.execute("SELECT conversation, user FROM ReplyAt WHERE Guild_ID = ?", (interaction.guild.id,))
             result = cursor.fetchall()
-            for row in result:
-                if row[2] is not None:
+
+            followup = await interaction.followup.send(
+                f"<a:loading:1112646025090445354> {client.user} stopping mention conversation (0/{len(result)})")
+
+            for i in range(len(result)):
+                row = result[i]
+                if row[0] is not None:
                     try:
+                        await r.hdel("ReplyAt", f"{interaction.guild.id}.{row[1]}")  # remove from redis
                         await prompt.stop_conversation(row[0])
                     except Exception as e:
                         logging.warning(e)
+
+                await followup.edit(
+                    content=f"<a:loading:1112646025090445354> {client.user} stopping mention conversation ({i + 1}/{len(result)})")
 
             # remove from database
             cursor.execute("DELETE FROM ReplyAt WHERE Guild_ID = ?", (interaction.guild.id,))
             cursor.execute("UPDATE Guild SET replyAt = FALSE WHERE Guild_ID = ?", (interaction.guild.id,))
             db.commit()
 
-            await interaction.followup.send(f"🔴 {client.user} will not reply <@{client.user.id}> message")
+            # set into redis
+            await r.hset("Guild.replyAt", str(interaction.guild.id), "0")
+
+            await followup.edit(content=f"🔴 {client.user} will not reply <@{client.user.id}> message")
 
     # Start DM message
     @tree.command(name="dm-chat", description=f"Start chat with {bot_name} in DM")
@@ -150,6 +166,7 @@ def set_command(client: commands.Bot, bot_name: str):
 
             # start new conversation
             conversation = await prompt.start_new_conversation()
+            await r.hset("ReplyThis", f"{interaction.guild.id}.{row[1]}", conversation)  # set into redis
             cursor.execute("UPDATE ReplyThis SET conversation = ? WHERE Guild_ID = ? AND channel_ID = ?",
                            (conversation, interaction.guild.id, row[1],))
 
@@ -158,7 +175,7 @@ def set_command(client: commands.Bot, bot_name: str):
         db.commit()
 
         # Stop ReplyAt conversation
-        cursor.execute("SELECT conversation FROM ReplyAt WHERE Guild_ID = ?", (interaction.guild.id,))
+        cursor.execute("SELECT conversation, user FROM ReplyAt WHERE Guild_ID = ?", (interaction.guild.id,))
         result = cursor.fetchall()
 
         # send process message
@@ -169,6 +186,7 @@ def set_command(client: commands.Bot, bot_name: str):
             row = result[i]
             if row[0] is not None:
                 try:
+                    await r.hdel("ReplyAt", f"{interaction.guild.id}.{row[1]}")  # remove from redis
                     await prompt.stop_conversation(row[0])
                 except Exception as e:
                     logging.warning(e)
@@ -194,19 +212,23 @@ def set_command(client: commands.Bot, bot_name: str):
         logging.info(f"{interaction.user} reset conversation in DM")
         await interaction.response.defer(ephemeral=True)
         cursor = db.cursor()
-        cursor.execute("SELECT * FROM DM WHERE User = ?", (interaction.user.id,))
+        cursor.execute("SELECT conversation FROM DM WHERE User = ?", (interaction.user.id,))
         result = cursor.fetchone()
 
         # stop conversation
-        if result is not None:
-            if result[1] is not None:
-                await prompt.stop_conversation(result[1])
+        if result[0] is not None:
+            try:
+                await prompt.stop_conversation(result[0])
+            except Exception as e:
+                logging.warning(e)
 
             # reset conversation
             conversation = await prompt.start_new_conversation()
             cursor.execute("UPDATE DM SET conversation = ? WHERE User = ?",
                            (conversation, interaction.user.id,))
             db.commit()
+
+            await r.hset("DM", str(interaction.user.id), conversation)
 
         await interaction.followup.send(f"🔄 {client.user} has reset conversation in DM")
 

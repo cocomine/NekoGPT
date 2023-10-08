@@ -6,6 +6,9 @@ import discord
 import redis.asyncio as redis
 from discord.ext import commands
 from dotenv import load_dotenv
+from redis.asyncio.retry import Retry
+from redis.backoff import ExponentialBackoff
+from redis.exceptions import (BusyLoadingError, ConnectionError, TimeoutError)
 from revChatGPT.V1 import AsyncChatbot
 
 import DatabaseHelper
@@ -39,7 +42,8 @@ def start(bot_name="ChatGPT"):
 
     # create redis connection
     logging.info(f"{bot_name} Connecting to Redis...")
-    share_var.redis_conn = redis.Redis(host='redis', port=6379, db=0)
+    retry = Retry(ExponentialBackoff(), 3)
+    share_var.redis_conn = redis.Redis(host='redis', port=6379, db=0, retry=retry, retry_on_error=[ConnectionError, TimeoutError, BusyLoadingError], decode_responses=True)
     logging.info(f"{bot_name} Redis is connected.")
 
     client = commands.Bot(command_prefix="!", intents=intents)  # create bot

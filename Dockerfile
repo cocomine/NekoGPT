@@ -1,4 +1,4 @@
-FROM python:latest
+FROM python:3.11.6
 LABEL authors="cocomine"
 LABEL version="0.2.2"
 WORKDIR /bot
@@ -17,9 +17,17 @@ RUN apt --yes install gstreamer1.0-plugins-good
 RUN apt --yes install gstreamer1.0-plugins-bad
 RUN apt --yes install gstreamer1.0-plugins-ugly
 RUN apt --yes install ffmpeg
-RUN mkdir "../database"
+
+# Install openssl 1.1.1w
+RUN wget -O - https://www.openssl.org/source/openssl-1.1.1w.tar.gz | tar zxf -
+RUN ./openssl-1.1.1w/config --prefix=/usr/local
+RUN make -j $(nproc)
+RUN make install_sw install_ssldirs
+RUN ldconfig -v
+ENV SSL_CERT_DIR /etc/ssl/certs
 
 # Add requirements
+RUN mkdir "../database"
 ADD src/requirements.txt ./
 RUN pip install -r requirements.txt
 
