@@ -6,6 +6,12 @@ from azure.cognitiveservices.speech import AudioDataStream
 
 class TTS:
     def __init__(self, speech_key: str, speech_region: str):
+        """
+        Azure Text to Speech
+
+        :param speech_key: Speech Key
+        :param speech_region: Speech Region
+        """
         speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=speech_region)
         speech_config.set_speech_synthesis_output_format(speechsdk.SpeechSynthesisOutputFormat.Audio24Khz48KBitRateMonoMp3)
         speech_config.set_property(speechsdk.PropertyId.Speech_LogFilename, "log.txt")  #debug
@@ -13,6 +19,12 @@ class TTS:
         self.speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=None)
 
     async def text_to_speech_bytes(self, text: str) -> bytes:
+        """
+        Text to Speech
+
+        :param text: Input Text
+        :return: Output Audio (bytes)
+        """
         speech_synthesis_result = self.speech_synthesizer.speak_text_async(text).get()
 
         if speech_synthesis_result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
@@ -28,6 +40,12 @@ class TTS:
         return speech_synthesis_result.audio_data
 
     async def text_to_speech_file(self, text: str, file_name: str) -> None:
+        """
+        Text to Speech
+
+        :param text: Input Text
+        :param file_name: Output Audio File Name
+        """
         speech_synthesis_result = self.speech_synthesizer.speak_text_async(text).get()
 
         audio_data_stream = AudioDataStream(speech_synthesis_result)

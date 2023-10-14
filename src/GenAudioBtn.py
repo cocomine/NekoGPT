@@ -2,6 +2,10 @@ import discord.ui
 
 
 class GenAudioBtn(discord.ui.View):
+    """
+    Generating audio button
+    Just a button that can't be clicked
+    """
     def __init__(self):
         super().__init__()
 

@@ -3,6 +3,11 @@ import sqlite3
 
 
 def database_helper(db: sqlite3.Connection, bot_name: str):
+    """
+    Check database version and update if needed.
+    :param db: database connection
+    :param bot_name: bot name
+    """
     cursor = db.cursor()
 
     try:
@@ -34,7 +39,7 @@ def database_helper(db: sqlite3.Connection, bot_name: str):
                     on update cascade on delete cascade
         )""")
         cursor.execute("CREATE TABLE `setting` (`key` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`key`))")
-        cursor.execute("INSERT INTO setting (`key`, `value`) VALUES ('version', '0.2')")
+        cursor.execute("INSERT INTO setting (`key`, `value`) VALUES ('version', '0.4')")
         db.commit()
 
         logging.info(f"{bot_name} Database initialized.")
@@ -49,6 +54,9 @@ def database_helper(db: sqlite3.Connection, bot_name: str):
             logging.info(f"{bot_name} Database is updating to v0.3...")
             update_0_3(db)
         if version[0] == "0.3":
+            logging.info(f"{bot_name} Database is updating to v0.4...")
+            update_0_4(db)
+        if version[0] == "0.4":
             logging.info(f"{bot_name} Database is up to date.")
             return
 
@@ -57,6 +65,10 @@ def database_helper(db: sqlite3.Connection, bot_name: str):
 
 
 def update_0_2(db: sqlite3.Connection):
+    """
+    Update database from v0.1 to v0.2
+    :param db: Database connection
+    """
     cursor = db.cursor()
 
     cursor.execute("""create table ReplyAt_dg_tmp(
@@ -79,6 +91,10 @@ def update_0_2(db: sqlite3.Connection):
 
 
 def update_0_3(db: sqlite3.Connection):
+    """
+    Update database from v0.2 to v0.3
+    :param db: Database connection
+    """
     cursor = db.cursor()
 
     cursor.execute("""create table ReplyThis_dg_tmp(
@@ -99,3 +115,21 @@ def update_0_3(db: sqlite3.Connection):
     cursor.execute("update setting set value = '0.3' where `key` = 'version'")
     db.commit()
 
+def update_0_4(db: sqlite3.Connection):
+    """
+    Update database from v0.3 to v0.4
+    :param db: Database connection
+    """
+    cursor = db.cursor()
+
+    cursor.execute("""create table DM_dg_tmp(
+        User         char(20) not null primary key,
+        conversation char(36) not null
+)""")
+    cursor.execute("""insert into DM_dg_tmp(User, conversation)
+        select User, conversation
+        from DM""")
+    cursor.execute("drop table DM")
+    cursor.execute("alter table DM_dg_tmp rename to DM")
+    cursor.execute("update setting set value = '0.4' where `key` = 'version'")
+    db.commit()

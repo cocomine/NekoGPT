@@ -30,11 +30,10 @@ class Prompt:
     # start new conversation
     async def start_new_conversation(self, prompt=default_prompt) -> str:
         """start new conversation and return conversation id
-        :param
-            prompt: prompt to start conversation
 
-        :return:
-            conversation id"""
+        :param prompt: prompt to start conversation
+
+        :return: conversation id"""
 
         conversation = None
         self.chatbot.reset_chat()
@@ -47,18 +46,18 @@ class Prompt:
     # stop and delete conversation
     async def stop_conversation(self, conversation_id):
         """stop and delete conversation
-        :param
-            conversation_id: conversation id to stop"""
+
+        :param conversation_id: conversation id to stop"""
 
         await self.chatbot.delete_conversation(conversation_id)
 
     # ask ChatGPT
     async def ask(self, conversation_id: str, message: discord.Message, prompt: str) -> tuple[str, list[Message]]:
         """ask ChatGPT and return message and message obj list
-        :param
-            conversation_id: conversation id to ask
-            message: discord message obj
-            prompt: prompt to ask
+
+        :param conversation_id: conversation id to ask
+        :param message: discord message obj
+        :param prompt: prompt to ask
 
         :return:
             message: message in one season

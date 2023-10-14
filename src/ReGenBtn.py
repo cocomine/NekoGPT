@@ -2,7 +2,13 @@ import discord.ui
 
 
 class ReGenBtn(discord.ui.View):
+
     def __init__(self, callback, message_obj_list: list[discord.Message]):
+        """
+        Regenerate button
+        :param callback: Callback function
+        :param message_obj_list: Will delete message object list
+        """
         super().__init__()
         self.callback = callback
         self.message_obj_list = message_obj_list

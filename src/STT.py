@@ -6,8 +6,14 @@ import azure.cognitiveservices.speech as speechsdk
 
 
 class STT:
-    # https://docs.microsoft.com/en-us/azure/cognitive-services/speech-service/language-support#speech-to-text
     def __init__(self, speech_key: str, speech_region: str):
+        """
+        Azure Speech to Text
+        https://docs.microsoft.com/en-us/azure/cognitive-services/speech-service/language-support#speech-to-text
+
+        :param speech_key: Speech Key
+        :param speech_region: Speech Region
+        """
         self.speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=speech_region)
         self.speech_config.speech_recognition_language = "zh-HK"
         self.auto_detect_source_language_config = speechsdk.AutoDetectSourceLanguageConfig(
@@ -16,8 +22,14 @@ class STT:
         self.compressed_format = speechsdk.audio.AudioStreamFormat(
             compressed_stream_format=speechsdk.AudioStreamContainerFormat.OGG_OPUS)
 
-    # https://docs.microsoft.com/en-us/azure/cognitive-services/speech-service/quickstart-python#speech-to-text
     async def speech_to_text(self, audio_file: bytes) -> str:
+        """
+        Speech to Text
+        https://docs.microsoft.com/en-us/azure/cognitive-services/speech-service/quickstart-python#speech-to-text
+
+        :param audio_file: Input audio File (bytes)
+        :return: Detected Text
+        """
         # Creates stream reader object to read audio from an external file.
         binary_file_reader = BinaryReaderCallback(audio_file)
         stream = speechsdk.audio.PullAudioInputStream(stream_format=self.compressed_format,
@@ -61,14 +73,24 @@ class STT:
         return text
 
 
-# https://docs.microsoft.com/en-us/python/api/azure-cognitiveservices-speech/azure.cognitiveservices.speech.audio.pullaudioinputstreamcallback?view=azure-python
 class BinaryReaderCallback(speechsdk.audio.PullAudioInputStreamCallback):
     def __init__(self, file: bytes):
+        """
+        Binary Reader Callback
+        https://docs.microsoft.com/en-us/python/api/azure-cognitiveservices-speech/azure.cognitiveservices.speech.audio.pullaudioinputstreamcallback?view=azure-python
+
+        :param file: File (bytes)
+        """
         super().__init__()
         self._file = io.BytesIO(file)
 
-    # https://docs.microsoft.com/en-us/python/api/azure-cognitiveservices-speech/azure.cognitiveservices.speech.audio.pullaudioinputstreamcallback?view=azure-python#read
     def read(self, buffer: memoryview) -> int:
+        """
+        Read
+        https://docs.microsoft.com/en-us/python/api/azure-cognitiveservices-speech/azure.cognitiveservices.speech.audio.pullaudioinputstreamcallback?view=azure-python#read
+
+        :param buffer: Buffer
+        """
         # print('trying to read {} frames'.format(buffer.nbytes))
         try:
             size = buffer.nbytes
@@ -82,8 +104,11 @@ class BinaryReaderCallback(speechsdk.audio.PullAudioInputStreamCallback):
             # print('Exception in `read`: {}'.format(ex))
             raise
 
-    # https://docs.microsoft.com/en-us/python/api/azure-cognitiveservices-speech/azure.cognitiveservices.speech.audio.pullaudioinputstreamcallback?view=azure-python#close
     def close(self) -> None:
+        """
+        Close
+        https://docs.microsoft.com/en-us/python/api/azure-cognitiveservices-speech/azure.cognitiveservices.speech.audio.pullaudioinputstreamcallback?view=azure-python#close
+        """
         # print('closing file')
         try:
             self._file.close()

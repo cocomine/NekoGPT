@@ -10,18 +10,30 @@ from Reply import Reply
 
 # set event listener
 def set_event_lister(client: commands.Bot, bot_name: str):
-    db = share_var.sql_conn
-    r = share_var.redis_conn
-    prompt = Prompt(share_var.chatbot_conn)
-    reply = Reply(client)
+    """
+    Set event listener
+    :param client: Discord bot client
+    :param bot_name: Bot name
+    """
+
+    db = share_var.sql_conn  # get database connection
+    r = share_var.redis_conn  # get redis connection
+    prompt = Prompt(share_var.chatbot_conn)  # create prompt object
+    reply = Reply(client)  # create reply object
 
     @client.event
     async def setup_hook():
+        """
+        Setup hook
+        """
         await r.flushdb()
         logging.info(f"{bot_name} Redis cache is cleared.")
 
     @client.event
     async def on_ready():
+        """
+        When bot is ready
+        """
         logging.info(f'{client.user} has connected to Discord!')
         try:
             synced = await client.tree.sync()
@@ -34,6 +46,10 @@ def set_event_lister(client: commands.Bot, bot_name: str):
     # add into server
     @client.event
     async def on_guild_join(guild: discord.Guild):
+        """
+        When bot is added into server
+        :param guild: Discord server(Guild) object
+        """
         logging.info(f"Joined {guild.name} server. ({guild.id})")
 
         # add into database
@@ -45,6 +61,10 @@ def set_event_lister(client: commands.Bot, bot_name: str):
     # remove from server
     @client.event
     async def on_guild_remove(guild: discord.Guild):
+        """
+        When bot is removed from server
+        :param guild: Discord server(Guild) object
+        """
         logging.info(f"Left {guild.name} server. ({guild.id})")
         cursor = db.cursor()
 
@@ -77,15 +97,20 @@ def set_event_lister(client: commands.Bot, bot_name: str):
 
     @client.event
     async def on_guild_channel_delete(channel: discord.abc.GuildChannel):
+        """
+        When channel is deleted
+        :param channel: Discord channel object
+        """
         cursor = db.cursor()
 
         # stop all conversation
-        cursor.execute("SELECT * FROM ReplyThis WHERE Channel_ID = ? AND Guild_ID = ?",
+        cursor.execute("SELECT conversation FROM ReplyThis WHERE Channel_ID = ? AND Guild_ID = ?",
                        (channel.id, channel.guild.id))
         result = cursor.fetchall()
         for row in result:
-            if row[2] is not None:
-                await prompt.stop_conversation(row[2])
+            if row[0] is not None:
+                await r.hdel("ReplyThis", f"{channel.guild.id}.{channel.id}")  # set into redis
+                await prompt.stop_conversation(row[0])
 
         cursor.execute("DELETE FROM ReplyThis WHERE channel_ID = ? AND Guild_ID = ?", (channel.id, channel.guild.id))
         db.commit()
@@ -93,6 +118,10 @@ def set_event_lister(client: commands.Bot, bot_name: str):
     # when message is sent
     @client.event
     async def on_message(message: discord.Message):
+        """
+        When message is sent
+        :param message: Discord message object
+        """
         logging.info(f"Message from {message.author} ({message.author.id}): {message.content}")
 
         if message.author == client.user:

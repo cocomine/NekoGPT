@@ -17,11 +17,15 @@ from TTS import TTS
 
 
 class Reply:
-    replying_dm = []
-    replying_mention = []
-    replying_channel = []
+    replying_dm = []  # in replying dm user list
+    replying_mention = []  # in replying mention user list
+    replying_channel = []  # in replying channel list
 
     def __init__(self, client: commands.Bot):
+        """
+        Handle reply message
+        :param client: Discord Bot Client
+        """
         self.r = share_var.redis_conn
         self.db = share_var.sql_conn
         self.prompt = Prompt(share_var.chatbot_conn)
@@ -31,6 +35,14 @@ class Reply:
 
     # Generate reply
     async def reply(self, message: discord.Message, conversation: str, msg: discord.Message) -> list[discord.Message]:
+        """
+        Generate reply
+        :param message:  Discord Message Object (ask)
+        :param conversation: Conversation ID
+        :param msg: Discord Message Object
+
+        :return: Message Object List
+        """
         ask = message.content
         # check if message is voice message
         if ask == "" and message.attachments[0] is not None:
@@ -91,6 +103,10 @@ class Reply:
 
     # DM
     async def dm(self, message: discord.Message):
+        """
+        Handle DM message
+        :param message: Discord Message Object
+        """
         cursor = self.db.cursor()
 
         # check if bot is replying
@@ -154,6 +170,10 @@ class Reply:
 
     # @mention bot
     async def mention(self, message: discord.Message):
+        """
+        Handle @mention message
+        :param message: Discord Message Object
+        """
         cursor = self.db.cursor()
 
         # check replyAt is enabled
@@ -235,6 +255,10 @@ class Reply:
 
     # channel message
     async def channel(self, message: discord.Message):
+        """
+        Handle channel message
+        :param message: Discord Message Object
+        """
         cursor = self.db.cursor()
 
         # get conversation

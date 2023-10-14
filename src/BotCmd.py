@@ -11,16 +11,26 @@ from Prompt import Prompt
 
 # set command listener
 def set_command(client: commands.Bot, bot_name: str):
-    tree = client.tree
-    r = share_var.redis_conn
-    db = share_var.sql_conn
-    prompt = Prompt(share_var.chatbot_conn)
+    """
+    Set command listener
+    :param client: Discord bot client
+    :param bot_name: Bot name
+    """
+
+    tree = client.tree  # get command tree
+    r = share_var.redis_conn  # get redis connection
+    db = share_var.sql_conn  # get database connection
+    prompt = Prompt(share_var.chatbot_conn)  # create prompt object
 
     # ping command
     @tree.command(name="ping", description="Check bot latency")
     @commands.is_owner()
     @commands.bot_has_permissions(send_messages=True)
     async def ping(interaction: discord.Interaction):
+        """
+        Check bot latency
+        :param interaction: Discord interaction
+        """
         logging.info(f"{interaction.user} pinged {client.user}")
         await interaction.response.send_message(f"Pong! {round(client.latency * 1000)}ms", ephemeral=True)
 
@@ -31,6 +41,10 @@ def set_command(client: commands.Bot, bot_name: str):
     @commands.bot_has_permissions(read_message_history=True, send_messages=True, use_external_emojis=True,
                                   add_reactions=True)
     async def reply_this(interaction: discord.Interaction):
+        """
+        Set Enable or Disable reply all message in channel
+        :param interaction: Discord interaction
+        """
         logging.info(f"{interaction.user} set {interaction.guild} reply all message in {interaction.channel}")
         await interaction.response.defer(ephemeral=True)
 
@@ -75,6 +89,10 @@ def set_command(client: commands.Bot, bot_name: str):
     @commands.bot_has_permissions(read_message_history=True, send_messages=True, use_external_emojis=True,
                                   add_reactions=True)
     async def reply_at(interaction: discord.Interaction):
+        """
+        Set Enable or Disable reply @mentions message in server
+        :param interaction: Discord interaction
+        """
         logging.info(f"{interaction.user} set {interaction.guild} reply @{client.user} message")
         await interaction.response.defer(ephemeral=True)
 
@@ -122,6 +140,10 @@ def set_command(client: commands.Bot, bot_name: str):
     @tree.command(name="dm-chat", description=f"Start chat with {bot_name} in DM")
     @commands.guild_only()
     async def dm_chat(interaction: discord.Interaction):
+        """
+        Start chat with bot in DM
+        :param interaction: Discord interaction
+        """
         logging.info(f"{interaction.user} start chat with {client.user} in DM")
 
         try:
@@ -143,6 +165,11 @@ def set_command(client: commands.Bot, bot_name: str):
     @commands.bot_has_permissions(read_message_history=True, send_messages=True, use_external_emojis=True,
                                   add_reactions=True)
     async def reset(interaction: discord.Interaction):
+        """
+        Reset all conversation in server
+        :param interaction: Discord interaction
+        :return:
+        """
         logging.info(f"{interaction.user} reset all conversation in {interaction.guild}")
         await interaction.response.defer(ephemeral=True)
         cursor = db.cursor()
@@ -205,6 +232,10 @@ def set_command(client: commands.Bot, bot_name: str):
     @commands.bot_has_permissions(send_messages=True)
     @commands.dm_only()
     async def reset_dm(interaction: discord.Interaction):
+        """
+        Reset conversation in DM (DM only)
+        :param interaction: Discord interaction
+        """
         if interaction.guild is not None:
             await interaction.response.send_message(f"❌ This command only can be used in DM", ephemeral=True)
             return
@@ -237,6 +268,10 @@ def set_command(client: commands.Bot, bot_name: str):
     @commands.guild_only()
     @commands.bot_has_permissions(send_messages=True)
     async def help(interaction: discord.Interaction):
+        """
+        Show help menu
+        :param interaction: Discord interaction
+        """
         logging.info(f"{interaction.user} show help menu")
         await interaction.response.defer()
         cursor = db.cursor()

@@ -1,0 +1,41 @@
+version: 0.2.2
+
+services:
+    nekogpt:
+        restart: always
+        image: cocomine/nekogpt:latest
+        environment:
+            # Please fill up following environment variables
+            - BOT_NAME=NekoGPT
+            - CHATGPT_TOKEN=
+            - DISCORD_TOKEN=
+            - SPEECH_KEY=
+            - SPEECH_REGION=
+            - CHATGPT_BASE_URL=
+        networks:
+            - nekogpt_net
+        volumes:
+            # Replace this with the path to the folder where you want to store the database.
+            - ./database:/path/to/your/data/folder
+        depends_on:
+            - gpt_poxy
+            - redis
+
+    gpt_poxy:
+        restart: always
+        image: cocomine/gpt_poxy:latest
+        networks:
+            - nekogpt_net
+
+    redis:
+        restart: always
+        image: redis:latest
+        networks:
+            - nekogpt_net
+        # command: redis-server --save 300 1 --appendonly yes --appendfilename "appendonly.aof"
+        volumes:
+            - ./database:/data
+
+networks:
+    nekogpt_net:
+        driver: bridge
