@@ -267,7 +267,7 @@ class Reply:
             cursor.execute("SELECT conversation FROM ReplyThis WHERE Guild_ID = ? AND channel_ID = ?",
                        (message.guild.id, message.channel.id))
             result = cursor.fetchone()
-            conversation = result[0]
+            conversation = result[0] if result is not None else None
             if conversation is not None:
                 await self.r.hset("ReplyThis", f"{message.guild.id}.{message.channel.id}", conversation)
 

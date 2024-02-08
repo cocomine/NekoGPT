@@ -41,7 +41,7 @@ class Prompt:
             if x["conversation_id"] is not None:
                 conversation = x["conversation_id"]
 
-        return conversation
+        return "conversation"
 
     # stop and delete conversation
     async def stop_conversation(self, conversation_id):
